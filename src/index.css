@@ -1,0 +1,423 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+
+:root {
+  --primary-blue: #005ee2;
+  --light-blue: #4A90E2;
+  --dark-blue: #003d9e;
+  --orange: #FF6B35;
+  --light-orange: #FF8A5B;
+  --white: #FFFFFF;
+  --light-gray: #F5F5F5;
+  --dark-gray: #1a1a1a;
+  --medium-gray: #2a2a2a;
+  --success-green: #10B981;
+  --warning-yellow: #F59E0B;
+  --error-red: #EF4444;
+  --purple: #8B5CF6;
+  --cyan: #06B6D4;
+  --pink: #EC4899;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Inter', sans-serif;
+  background: url('/bg.png') no-repeat center center fixed;
+  background-size: cover;
+  color: var(--white);
+  overflow-x: hidden;
+  line-height: 1.6;
+  position: relative;
+  margin: 0;
+  padding: 0;
+}
+
+/* Modern gradient background */
+body::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.3);
+  pointer-events: none;
+  z-index: -1;
+}
+
+.font-mono {
+  font-family: 'JetBrains Mono', monospace;
+}
+
+/* Modern button styles */
+.btn-primary {
+  background: linear-gradient(135deg, #3B82F6, #60A5FA);
+  border: none;
+  color: var(--white);
+  font-weight: 600;
+  border-radius: 12px;
+  padding: 12px 24px;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-primary::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  transition: left 0.5s;
+}
+
+.btn-primary:hover::before {
+  left: 100%;
+}
+
+.btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(59, 130, 246, 0.4);
+}
+
+.btn-primary:active {
+  transform: translateY(0);
+}
+
+.btn-secondary {
+  background: rgba(255, 255, 255, 0.1);
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  color: var(--white);
+  font-weight: 500;
+  border-radius: 12px;
+  padding: 12px 24px;
+  transition: all 0.2s ease;
+  backdrop-filter: blur(10px);
+}
+
+.btn-secondary:hover {
+  background: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.3);
+  transform: translateY(-1px);
+}
+
+.btn-danger {
+  background: linear-gradient(135deg, var(--error-red), #DC2626);
+  border: none;
+  color: var(--white);
+  font-weight: 600;
+  border-radius: 12px;
+  padding: 12px 24px;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+}
+
+.btn-danger:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(239, 68, 68, 0.4);
+}
+
+/* Modern card styles */
+.card {
+  background: rgba(255, 255, 255, 0.95);
+  color: var(--dark-gray);
+  border-radius: 16px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 48px rgba(0, 0, 0, 0.15);
+}
+
+.card-dark {
+  background: rgba(42, 42, 42, 0.95);
+  color: var(--white);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.card-dark:hover {
+  background: rgba(42, 42, 42, 0.98);
+}
+
+/* Modern input styles */
+.input {
+  background: white;
+  border: 2px solid #d1d5db;
+  color: #1f2937;
+  font-weight: 500;
+  border-radius: 12px;
+  padding: 12px 16px;
+  transition: all 0.3s ease;
+}
+
+.input:focus {
+  outline: none;
+  border-color: #3B82F6;
+  box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
+  transform: translateY(-1px);
+}
+
+.input::placeholder {
+  color: #9ca3af;
+  font-weight: 400;
+}
+
+/* Modern loading animation */
+.loading {
+  display: inline-block;
+  width: 32px;
+  height: 32px;
+  border: 3px solid rgba(255, 255, 255, 0.3);
+  border-radius: 50%;
+  border-top-color: #3B82F6;
+  animation: spin 1s ease-in-out infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Status badges */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.badge-registration {
+  background: linear-gradient(135deg, var(--success-green), #059669);
+  color: white;
+}
+
+.badge-captain {
+  background: linear-gradient(135deg, var(--warning-yellow), #D97706);
+  color: white;
+}
+
+.badge-drafting {
+  background: linear-gradient(135deg, #3B82F6, #60A5FA);
+  color: white;
+}
+
+.badge-completed {
+  background: linear-gradient(135deg, var(--purple), #7C3AED);
+  color: white;
+}
+
+/* Modern animations */
+.fade-in {
+  animation: fadeIn 0.6s ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.slide-up {
+  animation: slideUp 0.4s ease-out;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Hover effects */
+.hover-lift:hover {
+  transform: translateY(-2px);
+  transition: transform 0.2s ease;
+}
+
+.hover-scale:hover {
+  transform: scale(1.02);
+  transition: transform 0.2s ease;
+}
+
+/* Modern scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 107, 53, 0.6);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 107, 53, 0.8);
+}
+
+/* Utility classes */
+.glass {
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.text-gradient {
+  background: linear-gradient(135deg, #3B82F6, #60A5FA);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.shadow-glow {
+  box-shadow: 0 0 20px rgba(59, 130, 246, 0.3);
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .card {
+    border-radius: 12px;
+  }
+  
+  .btn-primary,
+  .btn-secondary,
+  .btn-danger {
+    border-radius: 10px;
+    padding: 10px 20px;
+  }
+  
+  .input {
+    border-radius: 10px;
+    padding: 10px 14px;
+  }
+}
+
+/* Modern grid layouts */
+.grid-auto-fit {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 24px;
+}
+
+.grid-auto-fill {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 20px;
+}
+
+/* Focus states */
+.focus-ring:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3);
+}
+
+/* Modern navigation */
+.nav-link {
+  position: relative;
+  padding: 8px 16px;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+}
+
+.nav-link:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.nav-link.active::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 20px;
+  height: 2px;
+  background: #3B82F6;
+  border-radius: 1px;
+}
+
+/* Social Floating Buttons */
+.social-button {
+  @apply w-14 h-14 rounded-full flex items-center justify-center text-white shadow-lg transition-all duration-300 hover:scale-110 hover:shadow-xl relative;
+}
+
+.social-tooltip {
+  @apply absolute right-16 bg-gray-800 text-white px-3 py-1 rounded-lg text-sm font-medium opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none whitespace-nowrap;
+}
+
+.twitch-button {
+  background: linear-gradient(135deg, #9146FF, #772CE8);
+}
+
+.twitch-button:hover {
+  background: linear-gradient(135deg, #A970FF, #8B42FF);
+  box-shadow: 0 8px 25px rgba(145, 70, 255, 0.4);
+}
+
+.discord-button {
+  background: linear-gradient(135deg, #5865F2, #4752C4);
+}
+
+.discord-button:hover {
+  background: linear-gradient(135deg, #6B73FF, #5865F2);
+  box-shadow: 0 8px 25px rgba(88, 101, 242, 0.4);
+}
+
+.youtube-button {
+  background: linear-gradient(135deg, #FF0000, #CC0000);
+}
+
+.youtube-button:hover {
+  background: linear-gradient(135deg, #FF3333, #FF0000);
+  box-shadow: 0 8px 25px rgba(255, 0, 0, 0.4);
+}
+
+.instagram-button {
+  background: linear-gradient(135deg, #E4405F, #C13584, #833AB4);
+}
+
+.instagram-button:hover {
+  background: linear-gradient(135deg, #F56565, #E4405F, #C13584);
+  box-shadow: 0 8px 25px rgba(228, 64, 95, 0.4);
+}
+
+/* Responsive social buttons */
+@media (max-width: 768px) {
+  .social-button {
+    @apply w-12 h-12;
+  }
+  
+  .social-tooltip {
+    @apply right-14;
+  }
+}
