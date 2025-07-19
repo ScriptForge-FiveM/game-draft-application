@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../contexts/AuthContext'
+import { ChatManager } from '../chat/ChatManager'
 import { ArrowLeft, Users, Trophy, Calendar, Clock, Gamepad2, UserPlus, ChevronDown, Save, RotateCcw, Bookmark } from 'lucide-react'
 import toast from 'react-hot-toast'
 
@@ -350,60 +351,60 @@ export function PublicEventView() {
   }
 
   return (
-    <div className="max-w-4xl mx-auto space-y-8 py-8">
+    <div className="max-w-4xl mx-auto space-y-6 md:space-y-8 py-4 md:py-8">
       <div className="flex items-center mb-8">
         <Link
           to="/"
-          className="flex items-center text-white hover:text-orange-300 mr-6 transition-colors"
+          className="flex items-center text-white hover:text-blue-300 mr-6 transition-colors"
         >
           <ArrowLeft className="h-6 w-6" />
         </Link>
         <div className="flex-1">
           <div className="flex items-center justify-between mb-4">
-            <h1 className="text-4xl font-bold text-white">
+            <h1 className="text-2xl md:text-4xl font-bold text-white">
               {event.title}
             </h1>
             {getStatusBadge(event.status)}
           </div>
           {event.description && (
-            <p className="text-white/80 text-lg">{event.description}</p>
+            <p className="text-white/80 text-base md:text-lg">{event.description}</p>
           )}
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8">
         {/* Event Details */}
-        <div className="lg:col-span-2 space-y-6">
-          <div className="glass rounded-xl p-6 border border-white/20">
-            <h3 className="text-xl font-bold text-white mb-4">Dettagli Evento</h3>
+        <div className="lg:col-span-2 space-y-4 md:space-y-6">
+          <div className="card-solid rounded-xl p-4 md:p-6">
+            <h3 className="text-lg md:text-xl font-bold text-white mb-4">Dettagli Evento</h3>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-              <div className="glass rounded-lg p-4 border border-blue-400/30">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4 mb-4 md:mb-6">
+              <div className="solid-bg rounded-lg p-3 md:p-4 border border-[#005ee2]/30">
                 <div className="flex items-center space-x-3">
-                  <Users className="h-6 w-6 text-blue-400" />
+                  <Users className="h-6 w-6 text-[#005ee2]" />
                   <div>
-                    <p className="text-sm text-blue-300 font-medium">Max Partecipanti</p>
-                    <p className="text-xl font-bold text-white">{event.max_participants}</p>
+                    <p className="text-xs md:text-sm text-[#4A90E2] font-medium">Max Partecipanti</p>
+                    <p className="text-lg md:text-xl font-bold text-white">{event.max_participants}</p>
                   </div>
                 </div>
               </div>
               
-              <div className="glass rounded-lg p-4 border border-green-400/30">
+              <div className="solid-bg rounded-lg p-3 md:p-4 border border-green-400/30">
                 <div className="flex items-center space-x-3">
                   <Trophy className="h-6 w-6 text-green-400" />
                   <div>
-                    <p className="text-sm text-green-300 font-medium">Giocatori per Squadra</p>
-                    <p className="text-xl font-bold text-white">{event.max_players_per_team}</p>
+                    <p className="text-xs md:text-sm text-green-300 font-medium">Giocatori per Squadra</p>
+                    <p className="text-lg md:text-xl font-bold text-white">{event.max_players_per_team}</p>
                   </div>
                 </div>
               </div>
               
-              <div className="glass rounded-lg p-4 border border-yellow-400/30">
+              <div className="solid-bg rounded-lg p-3 md:p-4 border border-yellow-400/30">
                 <div className="flex items-center space-x-3">
                   <Users className="h-6 w-6 text-yellow-400" />
                   <div>
-                    <p className="text-sm text-yellow-300 font-medium">Squadre</p>
-                    <p className="text-xl font-bold text-white">{event.team_count}</p>
+                    <p className="text-xs md:text-sm text-yellow-300 font-medium">Squadre</p>
+                    <p className="text-lg md:text-xl font-bold text-white">{event.team_count}</p>
                   </div>
                 </div>
               </div>
@@ -435,15 +436,15 @@ export function PublicEventView() {
         </div>
 
         {/* Registration Section */}
-        <div className="space-y-6">
+        <div className="space-y-4 md:space-y-6">
           {registration ? (
-            <div className="glass rounded-xl p-6 border border-green-400/30">
+            <div className="card-solid rounded-xl p-4 md:p-6 border border-green-400/30">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-xl font-bold text-white">La Tua Registrazione</h3>
+                <h3 className="text-lg md:text-xl font-bold text-white">La Tua Registrazione</h3>
                 {getRegistrationStatusBadge(registration.status)}
               </div>
               
-              <div className="space-y-3 text-sm">
+              <div className="space-y-2 md:space-y-3 text-sm">
                 <div>
                   <span className="text-white/70 font-medium">Posizione:</span>
                   <span className="text-white ml-2">{registration.preferred_position}</span>
@@ -461,7 +462,7 @@ export function PublicEventView() {
               </div>
 
               {registration.status === 'pending' && (
-                <div className="mt-4 p-3 bg-yellow-600/20 border border-yellow-400/30 rounded-lg">
+                <div className="mt-3 md:mt-4 p-3 bg-yellow-600/20 border border-yellow-400/30 rounded-lg">
                   <p className="text-yellow-200 text-sm">
                     La tua registrazione è in attesa di approvazione dall'organizzatore dell'evento.
                   </p>
@@ -469,7 +470,7 @@ export function PublicEventView() {
               )}
 
               {registration.status === 'approved' && (
-                <div className="mt-4 p-3 bg-green-600/20 border border-green-400/30 rounded-lg">
+                <div className="mt-3 md:mt-4 p-3 bg-green-600/20 border border-green-400/30 rounded-lg">
                   <p className="text-green-200 text-sm">
                     La tua registrazione è stata approvata! Sarai avvisato quando inizierà il draft.
                   </p>
@@ -477,17 +478,17 @@ export function PublicEventView() {
               )}
             </div>
           ) : event.status === 'registration' ? (
-            <div className="glass rounded-xl p-6 border border-white/20">
-              <h3 className="text-xl font-bold text-white mb-4 flex items-center">
+            <div className="card-solid rounded-xl p-4 md:p-6">
+              <h3 className="text-lg md:text-xl font-bold text-white mb-4 flex items-center">
                 <UserPlus className="h-5 w-5 mr-2" />
                 Registrati all'Evento
               </h3>
               
               {/* Profile Selection */}
               {userProfiles.length > 0 && (
-                <div className="mb-6 p-4 bg-blue-600/20 border border-blue-400/30 rounded-lg">
+                <div className="mb-4 md:mb-6 p-3 md:p-4 bg-blue-600/20 border border-blue-400/30 rounded-lg">
                   <div className="flex items-center justify-between mb-3">
-                    <h4 className="font-semibold text-white flex items-center">
+                    <h4 className="font-semibold text-white flex items-center text-sm md:text-base">
                       <Bookmark className="h-4 w-4 mr-2" />
                       Usa Profilo Salvato
                     </h4>
@@ -503,7 +504,7 @@ export function PublicEventView() {
                   <select
                     value={selectedProfile}
                     onChange={(e) => handleProfileChange(e.target.value)}
-                    className="w-full px-3 py-2 bg-gray-700 border-2 border-gray-600 rounded-lg text-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all"
+                    className="w-full px-3 py-2 bg-slate-700 border-2 border-[#005ee2]/30 rounded-xl text-white focus:border-[#005ee2] focus:ring-2 focus:ring-[#005ee2]/20 transition-all"
                   >
                     <option value="">Compila manualmente</option>
                     {userProfiles.map(profile => (
@@ -516,9 +517,9 @@ export function PublicEventView() {
                 </div>
               )}
               
-              <form onSubmit={handleRegistration} className="space-y-4">
+              <form onSubmit={handleRegistration} className="space-y-3 md:space-y-4">
                 <div>
-                  <label htmlFor="preferred_position" className="block text-sm font-bold text-white mb-2">
+                  <label htmlFor="preferred_position" className="block text-sm font-bold text-white mb-1 md:mb-2">
                     Posizione Generale *
                   </label>
                   <select
@@ -527,7 +528,7 @@ export function PublicEventView() {
                     required
                     value={formData.preferred_position}
                     onChange={handleChange}
-                    className="w-full px-3 py-2 bg-gray-700 border-2 border-gray-600 rounded-lg text-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all"
+                    className="w-full px-3 py-2 bg-slate-700 border-2 border-[#005ee2]/30 rounded-xl text-white focus:border-[#005ee2] focus:ring-2 focus:ring-[#005ee2]/20 transition-all"
                   >
                     <option value="">Seleziona Posizione</option>
                     {getGeneralPositions().map(position => (
@@ -537,17 +538,17 @@ export function PublicEventView() {
                 </div>
 
                 <div>
-                  <label htmlFor="specific_position" className="block text-sm font-bold text-white mb-2">
+                  <label htmlFor="specific_position" className="block text-sm font-bold text-white mb-1 md:mb-2">
                     Posizione Specifica *
                   </label>
                   <select
-                    id=""
+                    id="specific_position"
                     name="specific_position"
                     required
                     value={formData.specific_position}
                     onChange={handleChange}
                     disabled={!formData.preferred_position}
-                    className="w-full px-3 py-2 bg-gray-700 border-2 border-gray-600 rounded-lg text-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all"
+                    className="w-full px-3 py-2 bg-slate-700 border-2 border-[#005ee2]/30 rounded-xl text-white focus:border-[#005ee2] focus:ring-2 focus:ring-[#005ee2]/20 transition-all disabled:opacity-50"
                   >
                     <option value="">
                       {formData.preferred_position ? 'Seleziona Posizione Specifica' : 'Prima seleziona posizione generale'}
@@ -559,7 +560,7 @@ export function PublicEventView() {
                 </div>
 
                 <div>
-                  <label htmlFor="platform" className="block text-sm font-bold text-white mb-2">
+                  <label htmlFor="platform" className="block text-sm font-bold text-white mb-1 md:mb-2">
                     Piattaforma *
                   </label>
                   <select
@@ -568,7 +569,7 @@ export function PublicEventView() {
                     required
                     value={formData.platform}
                     onChange={handleChange}
-                    className="w-full px-3 py-2 bg-gray-700 border-2 border-gray-600 rounded-lg text-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all"
+                    className="w-full px-3 py-2 bg-slate-700 border-2 border-[#005ee2]/30 rounded-xl text-white focus:border-[#005ee2] focus:ring-2 focus:ring-[#005ee2]/20 transition-all"
                   >
                     <option value="">Seleziona Piattaforma</option>
                     <option value="PC">PC</option>
@@ -578,7 +579,7 @@ export function PublicEventView() {
                 </div>
 
                 <div>
-                  <label htmlFor="game_name" className="block text-sm font-bold text-white mb-2">
+                  <label htmlFor="game_name" className="block text-sm font-bold text-white mb-1 md:mb-2">
                     Nome in Gioco
                   </label>
                   <input
@@ -587,13 +588,13 @@ export function PublicEventView() {
                     name="game_name"
                     value={formData.game_name}
                     onChange={handleChange}
-                    className="w-full px-3 py-2 bg-gray-700 border-2 border-gray-600 rounded-lg text-white placeholder-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all"
+                    className="w-full px-3 py-2 bg-slate-700 border-2 border-[#005ee2]/30 rounded-xl text-white placeholder-slate-400 focus:border-[#005ee2] focus:ring-2 focus:ring-[#005ee2]/20 transition-all"
                     placeholder="Il tuo nome nel gioco..."
                   />
                 </div>
 
                 <div>
-                  <label htmlFor="real_team" className="block text-sm font-bold text-white mb-2">
+                  <label htmlFor="real_team" className="block text-sm font-bold text-white mb-1 md:mb-2">
                     Team di Appartenenza Reale
                   </label>
                   <input
@@ -602,19 +603,19 @@ export function PublicEventView() {
                     name="real_team"
                     value={formData.real_team}
                     onChange={handleChange}
-                    className="w-full px-3 py-2 bg-gray-700 border-2 border-gray-600 rounded-lg text-white placeholder-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all"
+                    className="w-full px-3 py-2 bg-slate-700 border-2 border-[#005ee2]/30 rounded-xl text-white placeholder-slate-400 focus:border-[#005ee2] focus:ring-2 focus:ring-[#005ee2]/20 transition-all"
                     placeholder="Es. Juventus, Real Madrid..."
                   />
                 </div>
 
-                <div className="flex items-center space-x-3">
+                <div className="flex items-start space-x-3">
                   <input
                     type="checkbox"
                     id="wants_captain"
                     name="wants_captain"
                     checked={formData.wants_captain}
                     onChange={(e) => setFormData(prev => ({ ...prev, wants_captain: e.target.checked }))}
-                    className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
+                    className="w-4 h-4 text-blue-600 bg-slate-100 border-slate-300 rounded focus:ring-blue-500 mt-1"
                   />
                   <label htmlFor="wants_captain" className="text-sm font-bold text-white">
                     Sono disponibile a fare il capitano
@@ -622,7 +623,7 @@ export function PublicEventView() {
                 </div>
 
                 <div>
-                  <label htmlFor="notes" className="block text-sm font-bold text-white mb-2">
+                  <label htmlFor="notes" className="block text-sm font-bold text-white mb-1 md:mb-2">
                     Note Aggiuntive
                   </label>
                   <textarea
@@ -631,13 +632,13 @@ export function PublicEventView() {
                     rows={3}
                     value={formData.notes}
                     onChange={handleChange}
-                    className="w-full px-3 py-2 bg-gray-700 border-2 border-gray-600 rounded-lg text-white placeholder-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all resize-none"
+                    className="w-full px-3 py-2 bg-slate-700 border-2 border-[#005ee2]/30 rounded-xl text-white placeholder-slate-400 focus:border-[#005ee2] focus:ring-2 focus:ring-[#005ee2]/20 transition-all resize-none"
                     placeholder="Informazioni aggiuntive..."
                   />
                 </div>
 
                 {/* Save Profile Option */}
-                <div className="border-t border-gray-600 pt-4">
+                <div className="border-t border-slate-600 pt-3 md:pt-4">
                   <div className="flex items-center space-x-3 mb-2">
                     <input
                       type="checkbox"
@@ -645,13 +646,13 @@ export function PublicEventView() {
                       name="save_as_profile"
                       checked={formData.save_as_profile}
                       onChange={(e) => setFormData(prev => ({ ...prev, save_as_profile: e.target.checked }))}
-                      className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
+                      className="w-4 h-4 text-blue-600 bg-slate-100 border-slate-300 rounded focus:ring-blue-500"
                     />
                     <label htmlFor="save_as_profile" className="text-sm font-bold text-white">
                       Salva queste informazioni per futuri draft
                     </label>
                   </div>
-                  <p className="text-xs text-gray-400">
+                  <p className="text-xs text-slate-400">
                     Potrai riutilizzare rapidamente questi dati in eventi futuri
                   </p>
                 </div>
@@ -659,7 +660,7 @@ export function PublicEventView() {
                 <button
                   type="submit"
                   disabled={registering}
-                  className="w-full btn-primary px-6 py-3 rounded-lg font-bold disabled:opacity-50"
+                  className="w-full btn-primary px-4 md:px-6 py-3 rounded-xl font-bold disabled:opacity-50 text-sm md:text-base"
                 >
                   {registering ? (
                     <>
@@ -677,7 +678,7 @@ export function PublicEventView() {
                     type="button"
                     onClick={saveAsProfile}
                     disabled={savingProfile}
-                    className="w-full px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white font-medium rounded-lg transition-colors disabled:opacity-50 flex items-center justify-center space-x-2"
+                    className="w-full px-4 py-2 bg-slate-600 hover:bg-slate-700 text-white font-medium rounded-xl transition-colors disabled:opacity-50 flex items-center justify-center space-x-2 text-sm md:text-base"
                   >
                     {savingProfile ? (
                       <>
@@ -695,8 +696,8 @@ export function PublicEventView() {
               </form>
             </div>
           ) : (
-            <div className="glass rounded-xl p-6 border border-yellow-400/30">
-              <h3 className="text-xl font-bold text-white mb-4">Registrazioni Chiuse</h3>
+            <div className="card-solid rounded-xl p-4 md:p-6 border border-yellow-400/30">
+              <h3 className="text-lg md:text-xl font-bold text-white mb-4">Registrazioni Chiuse</h3>
               <p className="text-yellow-200">
                 Le registrazioni per questo evento non sono più disponibili. L'evento è attualmente nella fase {event.status.replace('_', ' ')}.
               </p>
@@ -704,6 +705,17 @@ export function PublicEventView() {
           )}
         </div>
       </div>
+
+      {/* Public Event Chat - Show for registered users */}
+      {registration && (
+        <div className="mt-8">
+          <ChatManager 
+            eventId={event.id} 
+            isAdmin={false}
+            defaultTab="event"
+          />
+        </div>
+      )}
     </div>
   )
 }

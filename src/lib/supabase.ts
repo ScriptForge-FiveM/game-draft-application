@@ -15,6 +15,7 @@ export type Database = {
           discord_id: string
           avatar_url?: string
           is_admin: boolean
+          total_credits: number
           created_at: string
           updated_at: string
         }
@@ -24,6 +25,7 @@ export type Database = {
           discord_id: string
           avatar_url?: string
           is_admin?: boolean
+          total_credits?: number
           created_at?: string
           updated_at?: string
         }
@@ -33,6 +35,7 @@ export type Database = {
           discord_id?: string
           avatar_url?: string
           is_admin?: boolean
+          total_credits?: number
           created_at?: string
           updated_at?: string
         }
@@ -90,7 +93,7 @@ export type Database = {
           team_count: number
           max_players_per_team: number
           max_participants: number
-          status: 'registration' | 'captain_selection' | 'drafting' | 'completed'
+          status: 'registration' | 'captain_selection' | 'drafting' | 'completed' | 'ended'
           tournament_format?: 'elimination' | 'groups' | null
           groups_count?: number
           discord_server_id?: string
@@ -109,7 +112,7 @@ export type Database = {
           team_count: number
           max_players_per_team?: number
           max_participants: number
-          status?: 'registration' | 'captain_selection' | 'drafting' | 'completed'
+          status?: 'registration' | 'captain_selection' | 'drafting' | 'completed' | 'ended'
           tournament_format?: 'elimination' | 'groups' | null
           groups_count?: number
           discord_server_id?: string
@@ -128,7 +131,7 @@ export type Database = {
           team_count?: number
           max_players_per_team?: number
           max_participants?: number
-          status?: 'registration' | 'captain_selection' | 'drafting' | 'completed'
+          status?: 'registration' | 'captain_selection' | 'drafting' | 'completed' | 'ended'
           tournament_format?: 'elimination' | 'groups' | null
           groups_count?: number
           discord_server_id?: string
@@ -241,6 +244,80 @@ export type Database = {
           total_losses?: number
           draft_participations?: number
           preferred_position?: string
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      user_rankings: {
+        Row: {
+          id: string
+          user_id: string
+          username: string
+          total_drafts: number
+          drafts_won: number
+          total_matches: number
+          total_wins: number
+          total_losses: number
+          total_goals: number
+          total_assists: number
+          total_clean_sheets: number
+          captain_count: number
+          mvp_awards: number
+          top_scorer_awards: number
+          top_assists_awards: number
+          best_goalkeeper_awards: number
+          ranking_points: number
+          win_rate: number
+          goals_per_match: number
+          assists_per_match: number
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          username: string
+          total_drafts?: number
+          drafts_won?: number
+          total_matches?: number
+          total_wins?: number
+          total_losses?: number
+          total_goals?: number
+          total_assists?: number
+          total_clean_sheets?: number
+          captain_count?: number
+          mvp_awards?: number
+          top_scorer_awards?: number
+          top_assists_awards?: number
+          best_goalkeeper_awards?: number
+          ranking_points?: number
+          win_rate?: number
+          goals_per_match?: number
+          assists_per_match?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          username?: string
+          total_drafts?: number
+          drafts_won?: number
+          total_matches?: number
+          total_wins?: number
+          total_losses?: number
+          total_goals?: number
+          total_assists?: number
+          total_clean_sheets?: number
+          captain_count?: number
+          mvp_awards?: number
+          top_scorer_awards?: number
+          top_assists_awards?: number
+          best_goalkeeper_awards?: number
+          ranking_points?: number
+          win_rate?: number
+          goals_per_match?: number
+          assists_per_match?: number
           created_at?: string
           updated_at?: string
         }
@@ -514,6 +591,96 @@ export type Database = {
           pick_number?: number
           round?: number
           created_at?: string
+        }
+      }
+      event_chats: {
+        Row: {
+          id: string
+          event_id: string
+          sender_id: string
+          sender_username: string
+          message: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          event_id: string
+          sender_id: string
+          sender_username: string
+          message: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          event_id?: string
+          sender_id?: string
+          sender_username?: string
+          message?: string
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      match_chats: {
+        Row: {
+          id: string
+          match_id?: string
+          tournament_match_id?: string
+          sender_id: string
+          sender_username: string
+          message: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          match_id?: string
+          tournament_match_id?: string
+          sender_id: string
+          sender_username: string
+          message: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          match_id?: string
+          tournament_match_id?: string
+          sender_id?: string
+          sender_username?: string
+          message?: string
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      private_chats: {
+        Row: {
+          id: string
+          event_id: string
+          sender_id: string
+          recipient_id: string
+          message_text: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          event_id: string
+          sender_id: string
+          recipient_id: string
+          message_text: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          event_id?: string
+          sender_id?: string
+          recipient_id?: string
+          message_text?: string
+          created_at?: string
+          updated_at?: string
         }
       }
     }

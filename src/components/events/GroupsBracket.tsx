@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabase'
+import { useAuth } from '../../contexts/AuthContext'
 import { Users, Trophy, Shield, Target, Shuffle, Crown } from 'lucide-react'
 import toast from 'react-hot-toast'
 
@@ -33,12 +34,15 @@ interface GroupsBracketProps {
   eventId: string
   matches?: any[]
   teams?: Team[]
+  isAdmin?: boolean
 }
 
-export function GroupsBracket({ eventId, matches: propMatches, teams: propTeams }: GroupsBracketProps) {
+export function GroupsBracket({ eventId, matches: propMatches, teams: propTeams, isAdmin = false }: GroupsBracketProps) {
+  const { user } = useAuth()
   const [teams, setTeams] = useState<Team[]>([])
   const [groups, setGroups] = useState<Group[]>([])
   const [loading, setLoading] = useState(true)
+  const [shuffling, setShuffling] = useState(false)
 
   useEffect(() => {
     if (propMatches && propTeams) {
@@ -171,8 +175,212 @@ export function GroupsBracket({ eventId, matches: propMatches, teams: propTeams 
   }
 
   const shuffleGroups = () => {
+    if (!isAdmin || !user) {
+      toast.error('Solo gli amministratori possono rimescolare i gironi')
+      return
+    }
+    
+    setShuffling(true)
     generateGroups(teams)
-    toast.success('Gironi rimescolati!')
+    
+    // Salva i nuovi gironi nel database
+    saveGroupsToDatabase()
+  }
+
+  const saveGroupsToDatabase = async () => {
+    try {
+      console.log('💾 Saving shuffled groups to database...')
+      
+      // Ottieni il bracket ID per questo evento
+      const { data: bracketData, error: bracketError } = await supabase
+        .from('tournament_brackets')
+        .select('id')
+        .eq('event_id', eventId)
+        .single()
+      
+      if (bracketError) {
+        console.error('❌ Error finding bracket:', bracketError)
+        throw bracketError
+      }
+      
+      if (bracketData?.id) {
+        console.log('🗑️ Deleting existing matches for bracket:', bracketData.id)
+        
+        const { error: deleteError } = await supabase
+          .from('tournament_matches')
+          .delete()
+          .eq('bracket_id', bracketData.id)
+        
+        if (deleteError) {
+          console.error('❌ Error deleting matches:', deleteError)
+          throw deleteError
+        }
+        
+        console.log('✅ Existing matches deleted')
+        
+        // Ora rigenera i match con i nuovi gironi
+        await regenerateGroupMatches(bracketData.id)
+      }
+      
+      toast.success('Gironi rimescolati e salvati!')
+      
+      // Ricarica i dati per mostrare i nuovi match
+      setTimeout(() => {
+        window.location.reload()
+      }, 1000)
+      
+    } catch (error) {
+      console.error('Error saving groups:', error)
+      toast.error('Errore nel salvataggio dei gironi')
+    } finally {
+      setShuffling(false)
+    }
+  }
+
+  const regenerateGroupMatches = async (bracketId: string) => {
+    try {
+      console.log('🔄 Regenerating group matches...')
+      
+      // Ottieni le impostazioni del bracket
+      const { data: bracketSettings, error: settingsError } = await supabase
+        .from('tournament_brackets')
+        .select('settings')
+        .eq('id', bracketId)
+        .single()
+      
+      if (settingsError) throw settingsError
+      
+      const settings = bracketSettings.settings || {}
+      const groupsCount = settings.groupsCount || Math.ceil(teams.length / 4)
+      
+      // Ottieni l'orario del primo match dall'evento
+      const { data: eventData, error: eventError } = await supabase
+        .from('draft_events')
+        .select('first_match_time')
+        .eq('id', eventId)
+        .single()
+      
+      if (eventError) throw eventError
+      
+      const baseTime = eventData.first_match_time ? new Date(eventData.first_match_time) : new Date()
+      
+      // Rimescola le squadre
+      const shuffledTeams = [...teams].sort(() => Math.random() - 0.5)
+      const teamsPerGroup = Math.ceil(shuffledTeams.length / groupsCount)
+      
+      const matchesToCreate = []
+      let matchNumber = 1
+      let totalMatchCount = 0
+      
+      // Teniamo traccia di quali squadre stanno giocando in ogni slot orario
+      let teamSchedule = {}
+      
+      // Calcola il numero totale di partite per determinare quante possono essere giocate contemporaneamente
+      for (let groupIndex = 0; groupIndex < groupsCount; groupIndex++) {
+        const groupTeams = shuffledTeams.slice(
+          groupIndex * teamsPerGroup, 
+          (groupIndex + 1) * teamsPerGroup
+        )
+        totalMatchCount += (groupTeams.length * (groupTeams.length - 1)) / 2
+      }
+      
+      // Calcola quante partite possono essere giocate contemporaneamente
+      let matchesPerTimeSlot = Math.floor(teams.length / 4)
+      matchesPerTimeSlot = matchesPerTimeSlot > 0 ? matchesPerTimeSlot : 1
+      
+      console.log('🕒 Partite totali:', totalMatchCount, 'Partite per slot orario:', matchesPerTimeSlot)
+      // Inizializziamo la struttura per tenere traccia degli slot orari
+      let timeSlots = []
+      
+      // Crea i gironi e i match
+      for (let groupIndex = 0; groupIndex < groupsCount; groupIndex++) {
+        const groupTeams = shuffledTeams.slice(
+          groupIndex * teamsPerGroup, 
+          (groupIndex + 1) * teamsPerGroup
+        )
+        
+        console.log(`🏟️ Group ${groupIndex + 1} teams:`, groupTeams.map(t => t.name))
+        
+        // Prepara tutte le partite per questo girone
+        const groupMatches = []
+        for (let i = 0; i < groupTeams.length; i++) {
+          for (let j = i + 1; j < groupTeams.length; j++) {
+            groupMatches.push({
+              team1: groupTeams[i],
+              team2: groupTeams[j],
+              round: groupIndex + 1
+            })
+          }
+        }
+        
+        // Aggiungi tutte le partite del girone alla lista
+        timeSlots.push(...groupMatches)
+      }
+      
+
+      
+      // Ordiniamo le partite in modo casuale per una distribuzione più equa
+      timeSlots = timeSlots.sort(() => Math.random() - 0.5)
+       
+const MATCH_INTERVAL_MINUTES = 25
+let currentTimeSlotIndex = 0
+
+
+
+while (timeSlots.length > 0) {
+  const slotMatches = []
+  const busyTeams = new Set<string>()
+
+  // Cerca match non in conflitto da mettere nello stesso slot
+  for (let i = 0; i < timeSlots.length; i++) {
+    const match = timeSlots[i]
+    const t1 = match.team1.id
+    const t2 = match.team2.id
+
+    if (!busyTeams.has(t1) && !busyTeams.has(t2)) {
+      slotMatches.push(match)
+      busyTeams.add(t1)
+      busyTeams.add(t2)
+      timeSlots.splice(i, 1)
+      i--
+    }
+  }
+
+  const scheduledAt = new Date(baseTime.getTime() + currentTimeSlotIndex * MATCH_INTERVAL_MINUTES * 60 * 1000)
+
+  for (const match of slotMatches) {
+    matchesToCreate.push({
+      bracket_id: bracketId,
+      round: match.round,
+      match_number: matchNumber++,
+      team1_id: match.team1.id,
+      team2_id: match.team2.id,
+      team1_score: 0,
+      team2_score: 0,
+      status: 'pending' as const,
+      scheduled_at: scheduledAt.toISOString()
+    })
+  }
+
+  currentTimeSlotIndex++
+}
+
+      console.log('📝 Creating', matchesToCreate.length, 'new group matches')
+      
+      if (matchesToCreate.length > 0) {
+        const { error: insertError } = await supabase
+          .from('tournament_matches')
+          .insert(matchesToCreate)
+        
+        if (insertError) throw insertError
+        
+        console.log('✅ New group matches created successfully')
+      }
+      
+    } catch (error) {
+      console.error('Error regenerating group matches:', error)
+      throw error
+    }
   }
 
   const getTeamStats = (team: Team, group: Group) => {
@@ -267,10 +475,24 @@ export function GroupsBracket({ eventId, matches: propMatches, teams: propTeams 
         
         <button
           onClick={shuffleGroups}
-          className="flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors"
+          disabled={!isAdmin || shuffling}
+          className={`flex items-center px-4 py-2 font-medium rounded-lg transition-colors ${
+            isAdmin && !shuffling
+              ? 'bg-blue-600 hover:bg-blue-700 text-white'
+              : 'bg-gray-600 text-gray-400 cursor-not-allowed'
+          }`}
         >
-          <Shuffle className="h-4 w-4 mr-2" />
-          Rimescola Gironi
+          {shuffling ? (
+            <>
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+              Rimescolando...
+            </>
+          ) : (
+            <>
+              <Shuffle className="h-4 w-4 mr-2" />
+              {isAdmin ? 'Rimescola Gironi' : 'Solo Admin'}
+            </>
+          )}
         </button>
       </div>
 
@@ -335,48 +557,9 @@ export function GroupsBracket({ eventId, matches: propMatches, teams: propTeams 
                 </div>
 
                 {/* Partite */}
-                <div>
-                  <h5 className="font-semibold text-gray-300 mb-3 flex items-center">
-                    <Target className="h-4 w-4 mr-2" />
-                    Partite ({group.matches.length})
-                  </h5>
-                  <div className="space-y-2">
-                    {group.matches.map((match) => (
-                      <div key={match.id} className="bg-gray-700 rounded p-3">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center space-x-3">
-                            <div className="flex items-center space-x-2">
-                              <div 
-                                className="w-2 h-2 rounded-full"
-                                style={{ backgroundColor: match.team1.color }}
-                              />
-                              <span className="text-white text-sm">{match.team1.name}</span>
-                            </div>
-                            <span className="text-gray-400 text-xs">VS</span>
-                            <div className="flex items-center space-x-2">
-                              <div 
-                                className="w-2 h-2 rounded-full"
-                                style={{ backgroundColor: match.team2.color }}
-                              />
-                              <span className="text-white text-sm">{match.team2.name}</span>
-                            </div>
-                          </div>
-                          
-                          {match.completed && match.team1_score !== undefined && match.team2_score !== undefined ? (
-                            <div className="text-sm font-bold text-white">
-                              {match.team1_score} - {match.team2_score}
-                            </div>
-                          ) : (
-                            <span className="text-xs text-gray-500 bg-gray-600 px-2 py-1 rounded">
-                              Da giocare
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+
                 </div>
-              </div>
+         
             )
           })}
         </div>

@@ -21,31 +21,48 @@ interface Team {
 interface CaptainSelectionProps {
   eventId: string
   teamCount: number
+  onCaptainsChange?: (count: number) => void
 }
+
+
 
 const TEAM_COLORS = [
   '#EF4444', '#3B82F6', '#10B981', '#F59E0B',
   '#8B5CF6', '#EC4899', '#14B8A6', '#F97316'
 ]
 
-export function CaptainSelection({ eventId, teamCount }: CaptainSelectionProps) {
+export function CaptainSelection({ eventId, teamCount, onCaptainsChange }: CaptainSelectionProps) {
+
   const [registrations, setRegistrations] = useState<Registration[]>([])
   const [teams, setTeams] = useState<Team[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedCaptains, setSelectedCaptains] = useState<Set<string>>(new Set())
+const [canStartDraft, setCanStartDraft] = useState(false)
 
   useEffect(() => {
     fetchData()
   }, [eventId])
 
+  useEffect(() => {
+  setCanStartDraft(selectedCaptains.size === teamCount)
+}, [selectedCaptains, teamCount])
+
+useEffect(() => {
+  onCaptainsChange?.(selectedCaptains.size)
+}, [selectedCaptains, onCaptainsChange])
+
+
   const fetchData = async () => {
     try {
       // Fetch approved registrations
-      const { data: regsData, error: regsError } = await supabase
-        .from('registrations')
-        .select('*')
-        .eq('event_id', eventId)
-        .eq('status', 'approved')
+// Fetch approved registrations that want to be captain
+const { data: regsData, error: regsError } = await supabase
+  .from('registrations')
+  .select('*')
+  .eq('event_id', eventId)
+  .eq('status', 'approved')
+  .eq('wants_captain', true) // ✅ filtro aggiunto
+
 
       if (regsError) throw regsError
 
@@ -75,6 +92,43 @@ export function CaptainSelection({ eventId, teamCount }: CaptainSelectionProps) 
     }
   }
 
+const confirmCaptains = async () => {
+  try {
+    const captainData = teams
+      .filter(t => t.captain_id)
+      .map(team => {
+        const reg = registrations.find(r => r.user_id === team.captain_id)
+        if (!reg) return null
+
+        return {
+          team_id: team.id,
+          user_id: reg.user_id,
+          username: reg.username,
+          position: reg.preferred_position,
+          pick_order: 0,
+        }
+      })
+      .filter(Boolean)
+
+    if (captainData.length !== teamCount) {
+      toast.error('Manca almeno un capitano')
+      return
+    }
+
+    const { error } = await supabase
+      .from('team_members')
+      .insert(captainData)
+
+    if (error) throw error
+
+    toast.success('Capitani aggiunti ai team!')
+  } catch (err) {
+    console.error('Errore inserimento capitani:', err)
+    toast.error('Errore durante la conferma')
+  }
+}
+
+  
   const createInitialTeams = async () => {
     try {
       const teamsToCreate = Array.from({ length: teamCount }, (_, i) => ({
@@ -159,12 +213,8 @@ export function CaptainSelection({ eventId, teamCount }: CaptainSelectionProps) 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-4">
-          <Crown className="h-6 w-6 text-yellow-400" />
-          <h3 className="text-lg font-semibold text-white">Select Team Captains</h3>
-        </div>
         <div className="text-sm text-gray-400">
-          {selectedCaptains.size} / {teamCount} captains selected
+          {selectedCaptains.size} / {teamCount} capitani selezionati
         </div>
       </div>
 
@@ -231,7 +281,7 @@ export function CaptainSelection({ eventId, teamCount }: CaptainSelectionProps) 
           {availablePlayers.length === 0 ? (
             <div className="text-center py-8">
               <Users className="h-12 w-12 text-gray-500 mx-auto mb-4" />
-              <p className="text-gray-400">Tutti i giocatori approvati sono stati assegnati come capitani</p>
+              <p className="text-gray-400">Nessun capitano disponibile</p>
             </div>
           ) : (
             <div className="space-y-2">

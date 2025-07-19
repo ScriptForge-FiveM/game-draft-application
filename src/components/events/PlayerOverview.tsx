@@ -41,36 +41,49 @@ export function PlayerOverview({ eventId }: PlayerOverviewProps) {
     fetchPlayersAndPositions()
   }, [eventId])
 
-  const fetchPlayersAndPositions = async () => {
-    try {
-      // Fetch approved players
-      const { data: playersData, error: playersError } = await supabase
-        .from('registrations')
-        .select('*')
-        .eq('event_id', eventId)
-        .eq('status', 'approved')
-        .order('username')
+const fetchPlayersAndPositions = async () => {
+  try {
+    // Fetch all approved players for the event
+    const { data: playersData, error: playersError } = await supabase
+      .from('registrations')
+      .select('*')
+      .eq('event_id', eventId)
+      .eq('status', 'approved')
+      .order('username')
 
-      if (playersError) throw playersError
+    if (playersError) throw playersError
 
-      // Fetch game positions
-      const { data: positionsData, error: positionsError } = await supabase
-        .from('game_positions')
-        .select('*')
-        .eq('game_name', 'EA FC')
-        .eq('is_active', true)
-        .order('display_order')
+    // Fetch drafted player user_ids from team_members
+    const { data: draftedMembers, error: draftedError } = await supabase
+      .from('team_members')
+      .select('user_id')
 
-      if (positionsError) throw positionsError
+    if (draftedError) throw draftedError
 
-      setPlayers(playersData || [])
-      setGamePositions(positionsData || [])
-    } catch (error) {
-      console.error('Error fetching players and positions:', error)
-    } finally {
-      setLoading(false)
-    }
+    const draftedIds = new Set(draftedMembers?.map(m => m.user_id))
+
+    // Exclude drafted players
+    const undraftedPlayers = (playersData || []).filter(p => !draftedIds.has(p.user_id))
+
+    // Fetch game positions
+    const { data: positionsData, error: positionsError } = await supabase
+      .from('game_positions')
+      .select('*')
+      .eq('game_name', 'EA FC')
+      .eq('is_active', true)
+      .order('display_order')
+
+    if (positionsError) throw positionsError
+
+    setPlayers(undraftedPlayers)
+    setGamePositions(positionsData || [])
+  } catch (error) {
+    console.error('Error fetching players and positions:', error)
+  } finally {
+    setLoading(false)
   }
+}
+
 
   const getPositionName = (positionCode: string, isSpecific: boolean = false) => {
     const position = gamePositions.find(pos => 
@@ -333,28 +346,11 @@ export function PlayerOverview({ eventId }: PlayerOverviewProps) {
             </div>
           )}
 
-          {/* Captain Filter */}
-          <div>
-            <div className="flex items-center space-x-2 mb-3">
-              <Crown className="h-4 w-4 text-yellow-400" />
-              <h4 className="font-semibold text-white">Capitani</h4>
-            </div>
-            <button
-              onClick={() => setShowCaptainsOnly(!showCaptainsOnly)}
-              className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                showCaptainsOnly
-                  ? 'bg-yellow-600 text-white'
-                  : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-              }`}
-            >
-              Solo Disponibili Capitano ({players.filter(p => p.wants_captain).length})
-            </button>
-          </div>
         </div>
       </div>
 
       {/* Position Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-1 md:grid-cols-2 gap-6">
         {Object.entries(playersByPosition).map(([positionCode, positionData]) => {
           const Icon = positionData.icon
           
@@ -453,79 +449,14 @@ export function PlayerOverview({ eventId }: PlayerOverviewProps) {
         })}
       </div>
 
-      {/* Summary Stats */}
+      {/* Summary Stats */} 
       <div className="glass rounded-xl p-6 border border-white/20">
-        <h4 className="text-lg font-bold text-white mb-4">Statistiche Giocatori</h4>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="text-center">
-            <p className="text-2xl font-bold text-blue-400">{filteredPlayersCount}</p>
-            <p className="text-sm text-gray-400">Giocatori Mostrati</p>
-          </div>
-          <div className="text-center">
-            <p className="text-2xl font-bold text-yellow-400">
-              {getFilteredPlayers().filter(p => p.wants_captain).length}
-            </p>
-            <p className="text-sm text-gray-400">Disponibili Capitano</p>
-          </div>
-          <div className="text-center">
-            <p className="text-2xl font-bold text-green-400">
-              {getFilteredPlayers().filter(p => p.game_name).length}
-            </p>
-            <p className="text-sm text-gray-400">Con Nome Gioco</p>
-          </div>
-          <div className="text-center">
-            <p className="text-2xl font-bold text-purple-400">
-              {getFilteredPlayers().filter(p => p.real_team).length}
-            </p>
-            <p className="text-sm text-gray-400">Con Team Reale</p>
-          </div>
-        </div>
+
         
-        {/* Platform Distribution */}
-        <div className="mt-6">
-          <h5 className="font-semibold text-white mb-3">Distribuzione Piattaforme (Filtrati)</h5>
-          <div className="grid grid-cols-3 gap-4">
-            {['PC', 'PlayStation', 'Xbox'].map(platform => {
-              const count = getFilteredPlayers().filter(p => p.platform === platform).length
-              const totalCount = getFilteredPlayers().length
-              const percentage = totalCount > 0 ? Math.round((count / totalCount) * 100) : 0
-              
-              return (
-                <div key={platform} className="bg-gray-700 rounded-lg p-3 text-center">
-                  <p className="text-lg font-bold text-white">{count}</p>
-                  <p className="text-xs text-gray-400">{platform}</p>
-                  <p className="text-xs text-blue-300">{percentage}%</p>
-                </div>
-              )
-            })}
-          </div>
-        </div>
+
         
         {/* Most Popular Teams */}
-        {getFilteredPlayers().filter(p => p.real_team).length > 0 && (
-          <div className="mt-6">
-            <h5 className="font-semibold text-white mb-3">Team Più Popolari (Filtrati)</h5>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-              {Object.entries(
-                getFilteredPlayers()
-                  .filter(p => p.real_team)
-                  .reduce((acc, player) => {
-                    const team = player.real_team!
-                    acc[team] = (acc[team] || 0) + 1
-                    return acc
-                  }, {} as Record<string, number>)
-              )
-                .sort(([,a], [,b]) => b - a)
-                .slice(0, 6)
-                .map(([team, count]) => (
-                  <div key={team} className="bg-gray-700 rounded p-2 text-center">
-                    <p className="text-xs font-medium text-white truncate">{team}</p>
-                    <p className="text-xs text-blue-300">{count} giocatori</p>
-                  </div>
-                ))}
-            </div>
-          </div>
-        )}
+
       </div>
 
       {/* No Results */}

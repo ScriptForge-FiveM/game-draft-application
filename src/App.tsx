@@ -11,6 +11,7 @@ import { EventManagement } from './components/events/EventManagement'
 import { PublicEventView } from './components/events/PublicEventView'
 import { PublicEventDetails } from './components/events/PublicEventDetails'
 import { UserRankings } from './components/events/UserRankings'
+import { WebShop } from './components/shop/WebShop'
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth()
@@ -130,6 +131,12 @@ function AppRoutes() {
         <Route path="rankings" element={
           <ProtectedRoute>
             <UserRankings />
+          </ProtectedRoute>
+        } />
+        
+        <Route path="shop" element={
+          <ProtectedRoute>
+            <WebShop />
           </ProtectedRoute>
         } />
       </Route>

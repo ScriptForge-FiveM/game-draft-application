@@ -1,5 +1,6 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useAuth } from '../../contexts/AuthContext'
+import { supabase } from '../../lib/supabase'
 import { User, Save, Gamepad2, CheckCircle, RefreshCw } from 'lucide-react'
 import toast from 'react-hot-toast'
 

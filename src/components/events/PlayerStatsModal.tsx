@@ -16,6 +16,19 @@ interface PlayerStats {
   preferred_position?: string
 }
 
+interface PlayerRegistration {
+  id: string
+  username: string
+  preferred_position: string
+  specific_position?: string
+  platform: string
+  game_name?: string
+  real_team?: string
+  wants_captain: boolean
+  notes?: string
+  created_at: string
+}
+
 interface PlayerStatsModalProps {
   playerId: string
   playerName: string
@@ -25,17 +38,18 @@ interface PlayerStatsModalProps {
 
 export function PlayerStatsModal({ playerId, playerName, isOpen, onClose }: PlayerStatsModalProps) {
   const [stats, setStats] = useState<PlayerStats | null>(null)
+  const [registration, setRegistration] = useState<PlayerRegistration | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     if (isOpen && playerId) {
       fetchPlayerStats()
+      fetchPlayerRegistration()
     }
   }, [isOpen, playerId])
 
   const fetchPlayerStats = async () => {
     try {
-      setLoading(true)
       const { data, error } = await supabase
         .from('player_stats')
         .select('*')
@@ -49,6 +63,28 @@ export function PlayerStatsModal({ playerId, playerName, isOpen, onClose }: Play
       setStats(data || null)
     } catch (error) {
       console.error('Error fetching player stats:', error)
+    }
+  }
+
+  const fetchPlayerRegistration = async () => {
+    try {
+      setLoading(true)
+      // Get the most recent registration for this player
+      const { data, error } = await supabase
+        .from('registrations')
+        .select('*')
+        .eq('user_id', playerId)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single()
+
+      if (error && error.code !== 'PGRST116') {
+        throw error
+      }
+
+      setRegistration(data || null)
+    } catch (error) {
+      console.error('Error fetching player registration:', error)
     } finally {
       setLoading(false)
     }
@@ -91,10 +127,69 @@ export function PlayerStatsModal({ playerId, playerName, isOpen, onClose }: Play
         <div className="p-6">
           <div className="text-center mb-6">
             <h4 className="text-2xl font-bold text-white mb-2">{playerName}</h4>
-            {stats?.preferred_position && (
-              <p className="text-gray-400">{stats.preferred_position}</p>
+            {registration?.preferred_position && (
+              <p className="text-blue-400 font-medium">{registration.preferred_position}</p>
+            )}
+            {registration?.specific_position && (
+              <p className="text-gray-400 text-sm">{registration.specific_position}</p>
             )}
           </div>
+
+          {/* Player Information */}
+          {registration && (
+            <div className="mb-6 bg-gray-700 rounded-lg p-4">
+              <h5 className="font-semibold text-white mb-3 flex items-center">
+                <Users className="h-5 w-5 mr-2 text-blue-400" />
+                Informazioni Giocatore
+              </h5>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between p-3 bg-gray-600 rounded">
+                    <span className="text-gray-300">Piattaforma</span>
+                    <span className="font-bold text-white">{registration.platform}</span>
+                  </div>
+                  
+                  {registration.game_name && (
+                    <div className="flex items-center justify-between p-3 bg-gray-600 rounded">
+                      <span className="text-gray-300">Nome in Gioco</span>
+                      <span className="font-bold text-green-400">{registration.game_name}</span>
+                    </div>
+                  )}
+                  
+                  {registration.real_team && (
+                    <div className="flex items-center justify-between p-3 bg-gray-600 rounded">
+                      <span className="text-gray-300">Team Reale</span>
+                      <span className="font-bold text-blue-400">{registration.real_team}</span>
+                    </div>
+                  )}
+                </div>
+                
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between p-3 bg-gray-600 rounded">
+                    <span className="text-gray-300">Vuole Capitano</span>
+                    <span className={`font-bold ${registration.wants_captain ? 'text-yellow-400' : 'text-gray-400'}`}>
+                      {registration.wants_captain ? 'Sì' : 'No'}
+                    </span>
+                  </div>
+                  
+                  <div className="flex items-center justify-between p-3 bg-gray-600 rounded">
+                    <span className="text-gray-300">Registrato il</span>
+                    <span className="font-bold text-white text-sm">
+                      {new Date(registration.created_at).toLocaleDateString('it-IT')}
+                    </span>
+                  </div>
+                  
+                  {registration.notes && (
+                    <div className="p-3 bg-gray-600 rounded">
+                      <span className="text-gray-300 text-sm">Note:</span>
+                      <p className="text-white mt-1 text-sm">{registration.notes}</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
 
           {loading ? (
             <div className="flex items-center justify-center py-8">
@@ -215,6 +310,11 @@ export function PlayerStatsModal({ playerId, playerName, isOpen, onClose }: Play
               <p className="text-gray-500">
                 Questo giocatore non ha ancora statistiche registrate.
               </p>
+              {registration && (
+                <p className="text-blue-400 text-sm mt-2">
+                  Ma puoi vedere le sue informazioni di registrazione qui sopra!
+                </p>
+              )}
             </div>
           )}
         </div>

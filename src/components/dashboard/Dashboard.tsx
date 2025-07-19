@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../contexts/AuthContext'
-import { Plus, Users, Trophy, Clock, Activity, Gamepad2, Shield, Play, Crown, Target, Calendar, Settings, Zap, Filter, Search, Eye, UserCheck, Star } from 'lucide-react'
+import { ChatManager } from '../chat/ChatManager'
+import { Award, Plus, Users, Trophy, Clock, Activity, Gamepad2, Shield, Play, Crown, Target, Calendar, Settings, Zap, Filter, Search, Eye, UserCheck, Star } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 interface DraftEvent {
@@ -11,7 +12,7 @@ interface DraftEvent {
   description?: string
   team_count: number
   max_players: number
-  status: 'registration' | 'captain_selection' | 'drafting' | 'completed'
+  status: 'registration' | 'captain_selection' | 'drafting' | 'completed' | 'ended'
   tournament_format?: 'elimination' | 'groups' | null
   game_type?: string
   scheduled_at?: string
@@ -141,6 +142,11 @@ export function Dashboard() {
         class: 'badge-completed', 
         label: 'Completato',
         icon: Trophy
+      },
+      ended: { 
+        class: 'badge badge-completed', 
+        label: 'Concluso',
+        icon: Award
       }
     }
     
@@ -229,17 +235,17 @@ export function Dashboard() {
       {/* Header with Search and Filters */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
         <div>
-          <h1 className="text-4xl font-bold text-white mb-2">
+          <h1 className="text-2xl md:text-4xl font-bold text-white mb-2">
             Dashboard
             {profile?.is_admin && (
-              <span className={`ml-4 text-lg font-medium ${
-                isAdminViewActive ? 'text-orange-400' : 'text-blue-400'
+              <span className={`ml-2 md:ml-4 text-sm md:text-lg font-medium ${
+                isAdminViewActive ? 'text-blue-400' : 'text-blue-400'
               }`}>
                 ({isAdminViewActive ? 'Vista Admin' : 'Vista Utente'})
               </span>
             )}
           </h1>
-          <p className="text-xl text-white/80">
+          <p className="text-lg md:text-xl text-white/80">
         
           </p>
         </div>
@@ -253,17 +259,17 @@ export function Dashboard() {
               placeholder="Cerca eventi..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10 pr-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 transition-all"
+              className="w-full sm:w-auto pl-10 pr-4 py-2 bg-slate-700 border border-slate-600 rounded-xl text-white placeholder-gray-400 focus:border-[#005ee2] focus:ring-2 focus:ring-[#005ee2]/20 transition-all"
             />
           </div>
           
           {/* Filter */}
-          <div className="flex items-center space-x-2">
+          <div className="flex items-center space-x-2 w-full sm:w-auto">
             <Filter className="h-4 w-4 text-gray-400" />
             <select
               value={filter}
               onChange={(e) => setFilter(e.target.value as any)}
-              className="px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 transition-all"
+              className="flex-1 sm:flex-none px-3 py-2 bg-slate-700 border border-slate-600 rounded-xl text-white focus:border-[#005ee2] focus:ring-2 focus:ring-[#005ee2]/20 transition-all"
             >
               <option value="all">Tutti gli Eventi</option>
               {profile?.is_admin && isAdminViewActive && <option value="my_events">I Miei Eventi</option>}
@@ -276,30 +282,31 @@ export function Dashboard() {
 
       {/* Create Event Button for Admins */}
       {profile?.is_admin && isAdminViewActive && (
-        <div className="flex items-center justify-end">
+        <div className="flex items-center justify-center sm:justify-end">
           <Link
             to="/create-event"
-            className="btn-primary flex items-center space-x-2"
+            className="btn-primary flex items-center space-x-2 w-full sm:w-auto justify-center"
           >
             <Plus className="h-5 w-5" />
             <span>Crea Evento</span>
           </Link>
         </div>
       )}
-      
+
+
       {/* Events Grid */}
       <div className="space-y-6">
         {filteredEvents.length === 0 ? (
-          <div className="text-center py-16">
-            <div className="card p-12 max-w-2xl mx-auto">
+          <div className="text-center py-8 md:py-16">
+            <div className="card-solid p-6 md:p-12 max-w-2xl mx-auto">
               <div className="text-6xl mb-6">🎮</div>
-              <h3 className="text-2xl font-bold text-gray-800 mb-4">
+              <h3 className="text-xl md:text-2xl font-bold text-white mb-4">
                 {filter === 'all' ? 'Nessun Evento Disponibile' : 
                  filter === 'my_events' ? 'Nessun Evento Creato' :
                  filter === 'registered' ? 'Nessun Evento Registrato' :
                  'Nessun Evento Completato'}
               </h3>
-              <p className="text-lg text-gray-600">
+              <p className="text-base md:text-lg text-slate-300">
                 {filter === 'all' ? 'Al momento non ci sono eventi disponibili.' :
                  filter === 'my_events' ? 'Crea il tuo primo evento per iniziare!' :
                  filter === 'registered' ? 'Registrati a un evento per vederlo qui.' :
@@ -308,7 +315,7 @@ export function Dashboard() {
             </div>
           </div>
         ) : (
-          <div className="grid-auto-fit">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
             {filteredEvents.map((event, index) => {
               const progress = getEventProgress(event)
               const userStatus = getUserStatusBadge(event)
@@ -317,18 +324,18 @@ export function Dashboard() {
               return (
                 <Link key={event.id} to={getEventLink(event)}>
                   <div 
-                    className={`card p-6 cursor-pointer hover-lift fade-in ${
+                    className={`card-solid p-4 md:p-6 cursor-pointer hover-lift fade-in ${
                       isMyEvent ? 'border-l-4 border-purple-400' :
                       event.is_captain ? 'border-l-4 border-yellow-400' :
-                      event.user_registration ? 'border-l-4 border-green-400' : ''
+                      event.user_registration ? 'border-l-4 border-blue-400' : ''
                     }`}
                     style={{ animationDelay: `${index * 0.1}s` }}
                   >
                     <div className="flex items-start justify-between mb-4">
-                      <h3 className="text-xl font-bold text-gray-800 leading-tight">
+                      <h3 className="text-lg md:text-xl font-bold text-white leading-tight flex-1 mr-2">
                         {event.title}
                       </h3>
-                      <div className="flex flex-col items-end space-y-2">
+                      <div className="flex flex-col items-end space-y-1 md:space-y-2 flex-shrink-0">
                         {getStatusBadge(event.status)}
                         {userStatus}
                         {isMyEvent && (
@@ -342,16 +349,16 @@ export function Dashboard() {
                     
                     {/* Progress Bar */}
                     <div className="mb-4">
-                      <div className="flex items-center justify-between text-sm text-gray-600 mb-1">
+                      <div className="flex items-center justify-between text-sm text-slate-400 mb-1">
                         <span>Progresso Evento</span>
                         <span>{Math.round(progress)}%</span>
                       </div>
-                      <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div className="w-full bg-slate-600 rounded-full h-2">
                         <div 
                           className={`h-2 rounded-full transition-all duration-300 ${
                             isMyEvent ? 'bg-gradient-to-r from-purple-400 to-purple-500' :
                             event.is_captain ? 'bg-gradient-to-r from-yellow-400 to-orange-500' :
-                            'bg-gradient-to-r from-blue-400 to-purple-500'
+                            'bg-gradient-to-r from-[#005ee2] to-[#4A90E2]'
                           }`}
                           style={{ width: `${progress}%` }}
                         />
@@ -359,61 +366,61 @@ export function Dashboard() {
                     </div>
                     
                     {event.description && (
-                      <p className="text-gray-600 mb-6 line-clamp-2">
+                      <p className="text-slate-300 mb-4 md:mb-6 line-clamp-2 text-sm md:text-base">
                         {event.description}
                       </p>
                     )}
                     
                     {event.user_registration && (
-                      <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                        <p className="text-sm text-blue-800">
+                      <div className="mb-4 p-3 bg-[#005ee2]/20 border border-[#005ee2]/30 rounded-lg">
+                        <p className="text-sm text-[#4A90E2]">
                           <strong>La tua posizione:</strong> {event.user_registration.specific_position || event.user_registration.preferred_position}
                         </p>
                       </div>
                     )}
                     
                     {event.scheduled_at && (
-                      <div className="flex items-center text-gray-700 mb-3">
+                      <div className="flex items-center text-slate-300 mb-3">
                         <Calendar className="h-4 w-4 mr-2 text-purple-500" />
-                        <span className="text-sm">{new Date(event.scheduled_at).toLocaleString('it-IT')}</span>
+                        <span className="text-xs md:text-sm">{new Date(event.scheduled_at).toLocaleString('it-IT')}</span>
                       </div>
                     )}
                     
                     <div className="space-y-3">
-                      <div className="flex items-center text-gray-700">
-                        <Users className="h-5 w-5 mr-3 text-blue-500" />
-                        <span className="font-medium">
+                      <div className="flex items-center text-slate-300">
+                        <Users className="h-5 w-5 mr-3 text-[#005ee2]" />
+                        <span className="font-medium text-sm md:text-base">
                           {event.registrations?.[0]?.count || 0} / {event.max_players} Giocatori
                         </span>
                       </div>
-                      <div className="flex items-center text-gray-700">
+                      <div className="flex items-center text-slate-300">
                         <Shield className="h-5 w-5 mr-3 text-purple-500" />
-                        <span className="font-medium">{event.team_count} Squadre</span>
+                        <span className="font-medium text-sm md:text-base">{event.team_count} Squadre</span>
                       </div>
                       {event.game_type && (
-                        <div className="flex items-center text-gray-700">
+                        <div className="flex items-center text-slate-300">
                           {getGameIcon(event.game_type)}
-                          <span className="font-medium ml-3">{event.game_type}</span>
+                          <span className="font-medium ml-3 text-sm md:text-base">{event.game_type}</span>
                         </div>
                       )}
-                      <div className="flex items-center text-gray-700">
+                      <div className="flex items-center text-slate-300">
                         <Clock className="h-5 w-5 mr-3 text-orange-500" />
-                        <span className="font-medium">
+                        <span className="font-medium text-sm md:text-base">
                           Creato il {new Date(event.created_at).toLocaleDateString('it-IT')}
                         </span>
                       </div>
                     </div>
 
                     {/* Action indicator */}
-                    <div className="mt-4 pt-3 border-t border-gray-200">
+                    <div className="mt-4 pt-3 border-t border-slate-600">
                       <div className="flex items-center justify-between">
-                        <span className="text-sm text-gray-500">
+                        <span className="text-xs md:text-sm text-slate-400">
                           {isMyEvent ? 'Gestisci evento' :
                            event.is_captain ? 'Vista capitano' :
                            event.user_registration ? 'Visualizza dettagli' :
                            event.status === 'registration' ? 'Registrati' : 'Visualizza'}
                         </span>
-                        <Eye className="h-4 w-4 text-gray-400" />
+                        <Eye className="h-4 w-4 text-[#005ee2]" />
                       </div>
                     </div>
                   </div>

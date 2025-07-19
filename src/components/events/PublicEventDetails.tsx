@@ -2,11 +2,12 @@ import React, { useState, useEffect } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../contexts/AuthContext'
-import { ArrowLeft, Users, Trophy, Calendar, Clock, Gamepad2, Shield, Crown, Target, Play, Eye, Star, Search } from 'lucide-react'
+import { ArrowLeft, Users, Trophy, Calendar, Clock, Gamepad2, Shield, Crown, Target, Play, Eye, Star, Search, CheckCircle, MessageCircle  } from 'lucide-react'
 import { EliminationBracket } from './EliminationBracket'
 import { GroupsBracket } from './GroupsBracket'
 import { PlayerOverview } from './PlayerOverview'
 import { CaptainMatchResultForm } from './CaptainMatchResultForm'
+import { ChatManager } from '../chat/ChatManager'
 import toast from 'react-hot-toast'
 
 interface DraftEvent {
@@ -30,6 +31,7 @@ interface DraftEvent {
   organizer_name?: string
   twitch_channel?: string
   scheduled_at?: string
+  rules?: string
   created_at: string
 }
 
@@ -84,7 +86,7 @@ export function PublicEventDetails() {
   const [registrations, setRegistrations] = useState<Registration[]>([])
   const [matches, setMatches] = useState<TournamentMatch[]>([])
   const [loading, setLoading] = useState(true)
-  const [activeTab, setActiveTab] = useState<'overview' | 'bracket' | 'matches' | 'players'>('overview')
+  const [activeTab, setActiveTab] = useState<'overview' | 'bracket' | 'teams' | 'matches' | 'players' | 'chat'>('overview')
   const [selectedMatch, setSelectedMatch] = useState<{ matchId?: string, tournamentMatchId?: string } | null>(null)
   const [userRegistration, setUserRegistration] = useState<Registration | null>(null)
   const [isUserCaptain, setIsUserCaptain] = useState(false)
@@ -106,6 +108,7 @@ export function PublicEventDetails() {
           tournament_brackets (
             id,
             format,
+            stage,
             status,
             settings
           )
@@ -391,7 +394,8 @@ export function PublicEventDetails() {
               { id: 'bracket', label: 'Bracket', icon: Trophy, disabled: !event.tournament_bracket },
               { id: 'teams', label: 'Squadre', icon: Users, disabled: teams.length === 0 },
               { id: 'matches', label: 'Partite', icon: Play, disabled: matches.length === 0 },
-              { id: 'players', label: 'Giocatori', icon: Users }
+              { id: 'players', label: 'Giocatori', icon: Users },
+              { id: 'chat', label: 'Chat', icon: MessageCircle },
             ].map((tab) => {
               const Icon = tab.icon
               return (
@@ -476,6 +480,21 @@ export function PublicEventDetails() {
                     </div>
                   </div>
                 </div>
+
+                {/* Tournament Rules */}
+                {event.rules && (
+                  <div className="glass rounded-xl p-6 border border-white/20">
+                    <h3 className="text-xl font-bold text-white mb-4 flex items-center">
+                      <Shield className="h-6 w-6 mr-2 text-orange-400" />
+                      Regole del Torneo
+                    </h3>
+                    <div className="bg-gray-700/50 rounded-lg p-4">
+                      <pre className="text-gray-300 whitespace-pre-wrap font-sans leading-relaxed">
+                        {event.rules}
+                      </pre>
+                    </div>
+                  </div>
+                )} 
 
                 {/* Event Stats */}
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -777,7 +796,9 @@ export function PublicEventDetails() {
 
             {activeTab === 'bracket' && event.tournament_bracket && (
               <div>
-                <h3 className="text-2xl font-bold text-white mb-6">Bracket Torneo</h3>
+                <h3 className="text-2xl font-bold text-white mb-6">
+                  {event.tournament_bracket.format === 'elimination' ? 'Bracket Eliminazione Diretta' : 'Gironi del Torneo'}
+                </h3>
                 {event.tournament_bracket.format === 'elimination' ? (
                   <EliminationBracket eventId={event.id} matches={matches} teams={teams} />
                 ) : (
@@ -788,7 +809,9 @@ export function PublicEventDetails() {
 
             {activeTab === 'matches' && (
               <div className="space-y-6">
-                <h3 className="text-2xl font-bold text-white mb-6">Partite del Torneo</h3>
+                <h3 className="text-2xl font-bold text-white mb-6">
+                  Calendario Partite
+                </h3>
                 
                 {matches.length === 0 ? (
                   <div className="text-center py-12">
@@ -799,14 +822,32 @@ export function PublicEventDetails() {
                 ) : (
                   <div className="space-y-4">
                     {getCompletedMatches().length > 0 && (
-                      <div>
-                        <h4 className="text-lg font-semibold text-white mb-4">Partite Completate</h4>
+                      <div className="glass rounded-xl p-6 border border-green-400/30">
+                        <h4 className="text-lg font-semibold text-white mb-4 flex items-center">
+                          <CheckCircle className="h-5 w-5 mr-2 text-green-400" />
+                          Partite Completate
+                        </h4>
                         <div className="space-y-3">
                           {getCompletedMatches().map((match) => (
-                            <div key={match.id} className="bg-gray-700 rounded-lg p-4 border border-gray-600">
+                            <div 
+                              key={match.id} 
+                              className={`bg-gray-700 rounded-lg p-4 border ${
+                                (userCaptainTeamId && (match.team1_id === userCaptainTeamId || match.team2_id === userCaptainTeamId)) 
+                                  ? 'border-yellow-500 shadow-md shadow-yellow-500/20' 
+                                  : 'border-gray-600'
+                              }`}
+                            >
                               <div className="flex items-center justify-between">
                                 <div className="flex items-center space-x-4">
                                   <span className="text-sm text-gray-400">Round {match.round} - Match {match.match_number}</span>
+                                  {match.scheduled_at && (
+                                    <span className="text-xs text-green-400 bg-green-900/20 px-2 py-1 rounded">
+                                      {new Date(match.scheduled_at).toLocaleTimeString('it-IT', {
+                                        hour: '2-digit',
+                                        minute: '2-digit'
+                                      })}
+                                    </span>
+                                  )}
                                   <div className="flex items-center space-x-2">
                                     {match.team1 && (
                                       <>
@@ -844,52 +885,176 @@ export function PublicEventDetails() {
                     )}
 
                     {getPendingMatches().length > 0 && (
-                      <div>
-                        <h4 className="text-lg font-semibold text-white mb-4">Prossime Partite</h4>
-                        <div className="space-y-3">
-                          {getPendingMatches().map((match) => (
-                            <div key={match.id} className="bg-gray-700 rounded-lg p-4 border border-gray-600">
-                              <div className="flex items-center justify-between">
-                                <div className="flex items-center space-x-4">
-                                  <span className="text-sm text-gray-400">Round {match.round} - Match {match.match_number}</span>
+                      <div className="glass rounded-xl p-6 border border-blue-400/30">
+                        <h4 className="text-lg font-semibold text-white mb-4 flex items-center">
+                          <Calendar className="h-5 w-5 mr-2 text-blue-400" />
+                          Prossime Partite
+                        </h4>
+                        
+                        {/* Filtro per le tue partite */}
+                        {userCaptainTeamId && (
+                          <div className="mb-4 p-3 bg-blue-900/20 border border-blue-500/30 rounded-lg">
+                            <div className="flex items-center space-x-2 text-blue-300 mb-2">
+                              <Crown className="h-4 w-4" />
+                              <span className="font-medium">Le tue partite come capitano</span>
+                            </div>
+                            <div className="space-y-3">
+                              {getPendingMatches()
+                                .filter(match => match.team1_id === userCaptainTeamId || match.team2_id === userCaptainTeamId)
+                                .map((match) => (
+                                  <div key={match.id} className="bg-blue-900/30 rounded-lg p-4 border border-blue-500/50">
+                                    <div className="flex items-center justify-between">
+                                      <div className="flex items-center space-x-4">
+                                        <span className="text-sm text-blue-300">Round {match.round} - Match {match.match_number}</span>
+                                        {match.scheduled_at && (
+                                          <span className="text-xs text-white bg-blue-600 px-2 py-1 rounded font-bold">
+                                            {new Date(match.scheduled_at).toLocaleTimeString('it-IT', {
+                                              hour: '2-digit',
+                                              minute: '2-digit'
+                                            })}
+                                          </span>
+                                        )}
+                                        <div className="flex items-center space-x-2">
+                                          {match.team1 && (
+                                            <>
+                                              <div className="w-3 h-3 rounded-full" style={{ backgroundColor: match.team1.color }} />
+                                              <span className={`text-white ${match.team1_id === userCaptainTeamId ? 'font-bold' : ''}`}>
+                                                {match.team1.name}
+                                              </span>
+                                            </>
+                                          )}
+                                          <span className="text-gray-400 mx-2">VS</span>
+                                          {match.team2 && (
+                                            <>
+                                              <span className={`text-white ${match.team2_id === userCaptainTeamId ? 'font-bold' : ''}`}>
+                                                {match.team2.name}
+                                              </span>
+                                              <div className="w-3 h-3 rounded-full" style={{ backgroundColor: match.team2.color }} />
+                                            </>
+                                          )}
+                                        </div>
+                                      </div>
+                                      
+                                      <div className="flex items-center space-x-2">
+                                        <button
+                                          onClick={() => setSelectedMatch({ tournamentMatchId: match.id })}
+                                          className="px-3 py-1 bg-green-600 hover:bg-green-700 text-white text-xs font-medium rounded transition-colors"
+                                        >
+                                          Invia Risultato
+                                        </button>
+                                      </div>
+                                    </div>
+                                  </div>
+                                ))}
+                            </div>
+                          </div>
+                        )}
+                        
+     
+                     
+                       
+                        </div>
+                 
+                    )}
+                  </div>
+                )}
+                
+                {/* Calendario Completo */}
+                {matches.length > 0 && (
+                  <div className="glass rounded-xl p-6 border border-white/20 mt-8">
+                    <h4 className="text-lg font-semibold text-white mb-4 flex items-center">
+                      <Calendar className="h-5 w-5 mr-2 text-purple-400" />
+                      Calendario Completo
+                    </h4>
+                    
+                    <div className="space-y-6">
+                      {/* Raggruppa i match per data/ora */}
+                      {Object.entries(
+                        matches.reduce((acc, match) => {
+                          if (!match.scheduled_at) return acc;
+                          
+                          const timeKey = new Date(match.scheduled_at).toLocaleTimeString('it-IT', {
+                            hour: '2-digit',
+                            minute: '2-digit'
+                          });
+                          
+                          if (!acc[timeKey]) acc[timeKey] = [];
+                          acc[timeKey].push(match);
+                          return acc;
+                        }, {} as Record<string, TournamentMatch[]>)
+                      )
+                      .sort(([timeA], [timeB]) => timeA.localeCompare(timeB))
+                      .map(([time, timeMatches]) => (
+                        <div key={time} className="space-y-2">
+                          <h5 className="font-medium text-white flex items-center">
+                            <Clock className="h-4 w-4 mr-2 text-blue-400" />
+                            Orario: {time}
+                          </h5>
+                          
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            {timeMatches.map(match => (
+                              <div 
+                                key={match.id} 
+                                className={`p-3 rounded-lg ${
+                                  match.status === 'completed' 
+                                    ? 'bg-green-900/20 border border-green-600/30' 
+                                    : 'bg-gray-700 border border-gray-600'
+                                } ${
+                                  (userCaptainTeamId && (match.team1_id === userCaptainTeamId || match.team2_id === userCaptainTeamId))
+                                    ? 'border-yellow-500/50'
+                                    : ''
+                                }`}
+                              >
+                                <div className="flex items-center justify-between mb-1">
+                                  <span className="text-xs text-gray-400">
+                                    Round {match.round} - Match {match.match_number}
+                                  </span>
+                                  <span className={`text-xs px-2 py-0.5 rounded-full ${
+                                    match.status === 'completed' 
+                                      ? 'bg-green-600 text-white' 
+                                      : 'bg-yellow-600 text-white'
+                                  }`}>
+                                    {match.status === 'completed' ? 'Completata' : 'In Attesa'}
+                                  </span>
+                                </div>
+                                
+                                <div className="flex items-center justify-between">
                                   <div className="flex items-center space-x-2">
                                     {match.team1 && (
                                       <>
-                                        <div className="w-3 h-3 rounded-full" style={{ backgroundColor: match.team1.color }} />
-                                        <span className="text-white">{match.team1.name}</span>
+                                        <div className="w-2 h-2 rounded-full" style={{ backgroundColor: match.team1.color }} />
+                                        <span className={`text-sm ${match.team1_id === userCaptainTeamId ? 'font-bold text-white' : 'text-gray-300'}`}>
+                                          {match.team1.name}
+                                        </span>
                                       </>
                                     )}
-                                    <span className="text-gray-400 mx-2">VS</span>
+                                  </div>
+                                  
+                                  {match.status === 'completed' ? (
+                                    <span className="text-sm font-bold text-white">
+                                      {match.team1_score} - {match.team2_score}
+                                    </span>
+                                  ) : (
+                                    <span className="text-xs text-gray-400">VS</span>
+                                  )}
+                                  
+                                  <div className="flex items-center space-x-2">
                                     {match.team2 && (
                                       <>
-                                        <span className="text-white">{match.team2.name}</span>
-                                        <div className="w-3 h-3 rounded-full" style={{ backgroundColor: match.team2.color }} />
+                                        <span className={`text-sm ${match.team2_id === userCaptainTeamId ? 'font-bold text-white' : 'text-gray-300'}`}>
+                                          {match.team2.name}
+                                        </span>
+                                        <div className="w-2 h-2 rounded-full" style={{ backgroundColor: match.team2.color }} />
                                       </>
                                     )}
                                   </div>
                                 </div>
-                                
-                                <div className="flex items-center space-x-2">
-                                  {/* Captain can submit result if they're part of this match */}
-                                  {isUserCaptain && userCaptainTeamId && 
-                                   (match.team1_id === userCaptainTeamId || match.team2_id === userCaptainTeamId) && (
-                                    <button
-                                      onClick={() => setSelectedMatch({ tournamentMatchId: match.id })}
-                                      className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded transition-colors"
-                                    >
-                                      Invia Risultato
-                                    </button>
-                                  )}
-                                  <span className="px-3 py-1 bg-yellow-600 text-white text-xs font-medium rounded-full">
-                                    In Attesa
-                                  </span>
-                                </div>
                               </div>
-                            </div>
-                          ))}
+                            ))}
+                          </div>
                         </div>
-                      </div>
-                    )}
+                      ))}
+                    </div>
                   </div>
                 )}
               </div>
@@ -898,6 +1063,17 @@ export function PublicEventDetails() {
             {activeTab === 'players' && (
               <PlayerOverview eventId={event.id} />
             )}
+
+             {activeTab === 'chat' && (
+                <div className="space-y-4">
+                  <h3 className="text-2xl font-bold text-white mb-4">Chat dell’Evento</h3>
+                  <ChatManager
+                     eventId={event.id}
+                    isAdmin={profile?.is_admin}
+                    defaultTab="event"
+                   />
+                 </div>
+               )}
           </div>
         </div>
       </div>

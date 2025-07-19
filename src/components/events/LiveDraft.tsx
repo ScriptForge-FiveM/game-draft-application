@@ -40,6 +40,7 @@ export function LiveDraft({ eventId }: LiveDraftProps) {
   })
   const [isDraftActive, setIsDraftActive] = useState(false)
   const [loading, setLoading] = useState(true)
+const [searchQuery, setSearchQuery] = useState('')
 
   useEffect(() => {
     fetchDraftData()
@@ -211,10 +212,6 @@ export function LiveDraft({ eventId }: LiveDraftProps) {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-4">
-          <Play className="h-6 w-6 text-green-400" />
-          <h3 className="text-lg font-semibold text-white">Live Draft</h3>
-        </div>
         
         <div className="flex items-center space-x-4">
           {!allPlayersDrafted && (
@@ -227,7 +224,7 @@ export function LiveDraft({ eventId }: LiveDraftProps) {
               </div>
               {currentTeam && (
                 <p className="text-xs text-gray-400 mt-1">
-                  <span style={{ color: currentTeam.color }}>■</span> {currentTeam.name}'s turn
+                  <span style={{ color: currentTeam.color }}>■</span> Turno - {currentTeam.name}
                 </p>
               )}
             </div>
@@ -241,7 +238,7 @@ export function LiveDraft({ eventId }: LiveDraftProps) {
                 : 'bg-green-600 hover:bg-green-700 text-white'
             }`}
           >
-            {isDraftActive ? 'Pause Draft' : 'Start Draft'}
+            {isDraftActive ? 'Ferma il Draft' : 'Inizia il draft'}
           </button>
         </div>
       </div>
@@ -250,10 +247,10 @@ export function LiveDraft({ eventId }: LiveDraftProps) {
         <div className="bg-green-800/20 border border-green-600 rounded-lg p-4">
           <div className="flex items-center space-x-2 text-green-400">
             <Trophy className="h-5 w-5" />
-            <p className="font-medium">Draft Complete!</p>
+            <p className="font-medium">Draft completato!</p>
           </div>
           <p className="text-green-300 text-sm mt-1">
-            All players have been drafted. You can now generate the tournament bracket.
+            Tutti i giocatori sono stato scelti. Procedi con la generazione del torneo.
           </p>
         </div>
       )}
@@ -290,7 +287,7 @@ export function LiveDraft({ eventId }: LiveDraftProps) {
                     )}
                   </div>
                   <span className="text-xs text-gray-400">
-                    {team.members.length} players
+                    {team.members.length} giocatori
                   </span>
                 </div>
                 
@@ -299,7 +296,7 @@ export function LiveDraft({ eventId }: LiveDraftProps) {
                     <div className="flex items-center space-x-2 p-2 bg-gray-600 rounded">
                       <Crown className="h-4 w-4 text-yellow-400" />
                       <span className="text-sm font-medium text-white">{team.captain.username}</span>
-                      <span className="text-xs text-gray-400">Captain</span>
+                      <span className="text-xs text-gray-400">Capitano</span>
                     </div>
                   )}
                   
@@ -323,17 +320,28 @@ export function LiveDraft({ eventId }: LiveDraftProps) {
         {/* Available Players */}
         <div className="space-y-4">
           <h4 className="font-semibold text-white flex items-center">
-            Available Players ({availablePlayers.length})
+            Giocatori disponibili ({availablePlayers.length})
           </h4>
-          
+          <input
+  type="text"
+  placeholder="Cerca giocatore..."
+  value={searchQuery}
+  onChange={(e) => setSearchQuery(e.target.value)}
+  className="w-full px-3 py-2 rounded bg-gray-800 text-white placeholder-gray-400 mb-2"
+/>
+
           {availablePlayers.length === 0 ? (
             <div className="text-center py-8">
               <Users className="h-12 w-12 text-gray-500 mx-auto mb-4" />
-              <p className="text-gray-400">All players have been drafted!</p>
+              <p className="text-gray-400">Tutti i giocatori sono stati scelti!</p>
             </div>
           ) : (
             <div className="space-y-2 max-h-96 overflow-y-auto">
-              {availablePlayers.map((player) => (
+{availablePlayers
+  .filter(player =>
+    player.username.toLowerCase().includes(searchQuery.toLowerCase())
+  )
+  .map((player) => (
                 <div key={player.id} className="bg-gray-700 rounded-lg p-3 border border-gray-600">
                   <div className="flex items-center justify-between">
                     <div>

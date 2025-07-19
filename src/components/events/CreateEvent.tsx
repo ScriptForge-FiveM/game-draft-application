@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../contexts/AuthContext'
-import { Calendar, Users, Trophy, ArrowLeft, Zap, Settings, Shield, Gamepad2, Twitch } from 'lucide-react'
+import { Calendar, Users, Trophy, ArrowLeft, Zap, Settings, Shield, Gamepad2, Twitch, Clock } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 interface Game {
@@ -19,14 +19,19 @@ export function CreateEvent() {
   const [formData, setFormData] = useState({
     title: '',
     description: '',
-    organizer_name: '',
-    twitch_channel: '',
-    team_count: 4,
-    max_players_per_team: 5,
-    max_participants: 20,
-    game_id: '',
+    rules: `- Disconnessioni: rigioco solo se entro i primi 5 minuti
+- Ritardi: tolleranza 10 minuti poi vittoria a tavolino
+- Builds: Nessun limite per le build dei player
+- Report: Obbligatorie screenshot del risultato e dei goal e assist`,
+    organizer_name: 'LilTurbino',
+    twitch_channel: 'https://www.twitch.tv/lilturbinotv',
+    team_count: 8,
+    max_players_per_team: 11,
+    max_participants: 88,
+    game_id: 'cd7e83a3-e563-4563-8b70-e00d43ce1840',
     discord_server_id: '',
-    scheduled_at: ''
+    scheduled_at: '',
+    first_match_time: '21:30' // Default orario primo match
   })
 
   useEffect(() => {
@@ -50,22 +55,27 @@ export function CreateEvent() {
     }
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
+ const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!user) return
 
     setLoading(true)
     try {
-      // Get selected game name
       const selectedGame = games.find(g => g.id === formData.game_id)
       
-      // Convert scheduled_at to UTC if provided
       let scheduledAtUTC = null
       if (formData.scheduled_at) {
-        // Create a Date object from the datetime-local input (interpreted as local time)
         const localDate = new Date(formData.scheduled_at)
-        // Convert to UTC ISO string
         scheduledAtUTC = localDate.toISOString()
+      }
+      
+      // Combina data da scheduled_at con orario primo match
+      let firstMatchUTC = null
+      if (formData.scheduled_at && formData.first_match_time) {
+        const [hours, minutes] = formData.first_match_time.split(':').map(Number)
+        const matchDate = new Date(formData.scheduled_at)
+        matchDate.setHours(hours, minutes, 0, 0)
+        firstMatchUTC = matchDate.toISOString()
       }
       
       const { data, error } = await supabase
@@ -73,6 +83,7 @@ export function CreateEvent() {
         .insert({
           title: formData.title,
           description: formData.description || null,
+          rules: formData.rules || null,
           organizer_name: formData.organizer_name || null,
           twitch_channel: formData.twitch_channel || null,
           admin_id: user.id,
@@ -83,6 +94,7 @@ export function CreateEvent() {
           game_type: selectedGame?.name || null,
           discord_server_id: formData.discord_server_id || null,
           scheduled_at: scheduledAtUTC,
+          first_match_time: firstMatchUTC,
           status: 'registration'
         })
         .select()
@@ -99,6 +111,7 @@ export function CreateEvent() {
       setLoading(false)
     }
   }
+
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target
@@ -154,12 +167,12 @@ export function CreateEvent() {
       <div className="flex items-center mb-8">
         <button
           onClick={() => navigate('/dashboard')}
-          className="flex items-center text-orange-400 hover:text-orange-300 mr-6 transition-colors"
+          className="flex items-center text-blue-400 hover:text-blue-300 mr-6 transition-colors"
         >
           <ArrowLeft className="h-6 w-6" />
         </button>
         <div>
-          <h1 className="text-4xl font-bold bg-gradient-to-r from-orange-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
+          <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-400 via-blue-500 to-blue-600 bg-clip-text text-transparent">
             Crea Evento Draft
           </h1>
           <p className="text-white/80 text-lg mt-2">Configura un nuovo draft live per la tua community</p>
@@ -181,7 +194,7 @@ export function CreateEvent() {
                 required
                 value={formData.title}
                 onChange={handleChange}
-                className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 transition-all"
+                className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:border-[#005ee2] focus:ring-2 focus:ring-[#005ee2]/20 transition-all"
                 placeholder="Friday Night FIFA Draft"
               />
             </div>
@@ -196,8 +209,23 @@ export function CreateEvent() {
                 rows={4}
                 value={formData.description}
                 onChange={handleChange}
-                className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 transition-all resize-none"
+                className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:border-[#005ee2] focus:ring-2 focus:ring-[#005ee2]/20 transition-all resize-none"
                 placeholder="Evento draft settimanale per Pro Clubs..."
+              />
+            </div>
+
+            <div>
+              <label htmlFor="rules" className="block text-sm font-bold text-white mb-3">
+                Regole del Torneo
+              </label>
+              <textarea
+                id="rules"
+                name="rules"
+                rows={6}
+                value={formData.rules}
+                onChange={handleChange}
+                className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:border-[#005ee2] focus:ring-2 focus:ring-[#005ee2]/20 transition-all resize-none"
+                placeholder="- Ogni partita dura 6 minuti&#10;- Nessun cambio di difficoltà&#10;- Fair play obbligatorio&#10;- Disconnessioni: rigioco solo se entro i primi 2 minuti..."
               />
             </div>
 
@@ -211,7 +239,7 @@ export function CreateEvent() {
                 name="organizer_name"
                 value={formData.organizer_name}
                 onChange={handleChange}
-                className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 transition-all"
+                className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:border-[#005ee2] focus:ring-2 focus:ring-[#005ee2]/20 transition-all"
                 placeholder="Lil Turbino"
               />
             </div>
@@ -227,7 +255,7 @@ export function CreateEvent() {
                 name="twitch_channel"
                 value={formData.twitch_channel}
                 onChange={handleChange}
-                className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 transition-all"
+                className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:border-[#005ee2] focus:ring-2 focus:ring-[#005ee2]/20 transition-all"
                 placeholder="lilturbino"
               />
             </div>
@@ -246,7 +274,7 @@ export function CreateEvent() {
                 required
                 value={formData.game_id}
                 onChange={handleChange}
-                className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 transition-all"
+                className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:border-[#005ee2] focus:ring-2 focus:ring-[#005ee2]/20 transition-all"
               >
                 <option value="">Seleziona un gioco</option>
                 {Object.entries(gamesByCategory).map(([category, categoryGames]) => (
@@ -269,11 +297,12 @@ export function CreateEvent() {
                   id="team_count"
                   name="team_count"
                   required
+                  min={2}
                   value={formData.team_count}
                   onChange={handleChange}
-                  className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 transition-all"
+                  className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:border-[#005ee2] focus:ring-2 focus:ring-[#005ee2]/20 transition-all"
                 >
-                  {[2, 3, 4, 5, 6, 7, 8].map(num => (
+                  {Array.from({length: 30}, (_, i) => i + 2).map(num => (
                     <option key={num} value={num}>{num} Squadre</option>
                   ))}
                 </select>
@@ -290,10 +319,10 @@ export function CreateEvent() {
                   name="max_players_per_team"
                   required
                   min={3}
-                  max={11}
+                  max={22}
                   value={formData.max_players_per_team}
                   onChange={handleChange}
-                  className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 transition-all"
+                  className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:border-[#005ee2] focus:ring-2 focus:ring-[#005ee2]/20 transition-all"
                 />
               </div>
             </div>
@@ -308,11 +337,11 @@ export function CreateEvent() {
                 id="max_participants"
                 name="max_participants"
                 required
-                min={formData.team_count}
-                max={100}
+                min={1}
+                max={1000}
                 value={formData.max_participants}
                 onChange={handleChange}
-                className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 transition-all"
+                className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:border-[#005ee2] focus:ring-2 focus:ring-[#005ee2]/20 transition-all"
               />
             </div>
 
@@ -327,7 +356,7 @@ export function CreateEvent() {
                 name="discord_server_id"
                 value={formData.discord_server_id}
                 onChange={handleChange}
-                className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 transition-all"
+                className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:border-[#005ee2] focus:ring-2 focus:ring-[#005ee2]/20 transition-all"
                 placeholder="Opzionale: Limita ai membri del server Discord"
               />
             </div>
@@ -343,9 +372,28 @@ export function CreateEvent() {
                 name="scheduled_at"
                 value={formData.scheduled_at}
                 onChange={handleChange}
-                className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 transition-all"
+                className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:border-[#005ee2] focus:ring-2 focus:ring-[#005ee2]/20 transition-all"
               />
             </div>
+
+<div>
+  <label htmlFor="first_match_time" className="block text-sm font-bold text-white mb-3">
+    <Clock className="h-4 w-4 inline mr-2" />
+    Orario Primo Match
+  </label>
+  <input
+    type="time"
+    id="first_match_time"
+    name="first_match_time"
+    value={formData.first_match_time}
+    onChange={handleChange}
+    className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:border-[#005ee2] focus:ring-2 focus:ring-[#005ee2]/20 transition-all"
+  />
+  <p className="text-gray-400 text-sm mt-2">
+    I match successivi inizieranno ogni 25 minuti
+  </p>
+</div>
+
           </div>
         </div>
 

@@ -30,6 +30,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [profile, setProfile] = useState<Profile | null>(null)
   const [loading, setLoading] = useState(true)
   const [isAdminViewActive, setIsAdminViewActive] = useState(true)
+  const [retryCount, setRetryCount] = useState(0)
+  const maxRetries = 10
 
   useEffect(() => {
     console.log('🔧 AuthProvider initialized')
@@ -52,6 +54,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (session?.user) {
           console.log('✅ User authenticated:', session.user.id)
           setUser(session.user)
+          setRetryCount(0) // Reset retry count on new session
           
           // For new sign-ins, wait a bit for the database trigger
           if (event === 'SIGNED_IN') {
@@ -67,6 +70,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           console.log('👋 User signed out or no session')
           setUser(null)
           setProfile(null)
+          setRetryCount(0)
           setIsAdminViewActive(true) // Reset to admin view on logout
         }
         
@@ -79,6 +83,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       subscription.unsubscribe()
     }
   }, [])
+
+  // Auto-retry profile loading if user exists but profile doesn't
+  useEffect(() => {
+    if (user && !profile && !loading && retryCount < maxRetries) {
+      const timer = setTimeout(() => {
+        console.log(`🔄 Auto-retry profile loading (${retryCount + 1}/${maxRetries})`)
+        setRetryCount(prev => prev + 1)
+        loadUserProfile(user.id, 3) // Fewer retries per attempt
+      }, 3000) // Wait 3 seconds between retries
+      
+      return () => clearTimeout(timer)
+    }
+  }, [user, profile, loading, retryCount])
 
   const getInitialSession = async () => {
     try {
@@ -136,6 +153,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       } else {
         console.log('✅ Profile loaded successfully:', data)
         setProfile(data)
+        setRetryCount(0) // Reset retry count on successful load
       }
     } catch (error) {
       console.error('💥 Error in loadUserProfile:', error)
@@ -168,6 +186,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (!loadError && data) {
           console.log('✅ Profile created and loaded successfully:', data)
           setProfile(data)
+          setRetryCount(0)
         } else {
           console.log('❌ Profile still not available after creation attempt')
         }
@@ -218,6 +237,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // Clear state anyway
         setUser(null)
         setProfile(null)
+        setRetryCount(0)
         return
       }
       
@@ -231,6 +251,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Clear state immediately
       setUser(null)
       setProfile(null)
+      setRetryCount(0)
       setIsAdminViewActive(true) // Reset to admin view
       
       console.log('✅ Sign out successful')
@@ -239,6 +260,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Even if signOut fails, clear the local state
       setUser(null)
       setProfile(null)
+      setRetryCount(0)
       setIsAdminViewActive(true)
       throw error
     }
@@ -247,6 +269,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const refreshProfile = async () => {
     if (user) {
       console.log('🔄 Manually refreshing profile for user:', user.id)
+      setRetryCount(0) // Reset retry count on manual refresh
       await loadUserProfile(user.id)
     }
   }
@@ -254,6 +277,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const toggleAdminView = () => {
     setIsAdminViewActive(prev => !prev)
   }
+  
   const value = {
     user,
     profile,

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabase'
-import { Trophy, Target, Users, Shield, Crown, Star, TrendingUp, Award, Medal, Zap } from 'lucide-react'
+import { Trophy, Target, Users, Shield, Crown, Star, TrendingUp, Award, Medal, Zap, Calendar, Gamepad2 } from 'lucide-react'
 
 interface UserRanking {
   id: string
@@ -23,6 +23,8 @@ interface UserRanking {
   win_rate: number
   goals_per_match: number
   assists_per_match: number
+  created_at: string
+  updated_at: string
 }
 
 interface DraftAward {
@@ -33,6 +35,7 @@ interface DraftAward {
   username: string
   value: number
   description: string
+  created_at: string
   event?: {
     title: string
   }
@@ -42,7 +45,7 @@ export function UserRankings() {
   const [rankings, setRankings] = useState<UserRanking[]>([])
   const [recentAwards, setRecentAwards] = useState<DraftAward[]>([])
   const [loading, setLoading] = useState(true)
-  const [activeTab, setActiveTab] = useState<'overall' | 'goals' | 'assists' | 'wins' | 'clean_sheets' | 'awards'>('overall')
+  const [activeTab, setActiveTab] = useState<'overall' | 'goals' | 'assists' | 'wins' | 'clean_sheets' | 'awards' | 'captains'>('overall')
 
   useEffect(() => {
     fetchRankingsAndAwards()
@@ -50,12 +53,12 @@ export function UserRankings() {
 
   const fetchRankingsAndAwards = async () => {
     try {
-      // Fetch ALL user rankings (including those with 0 stats)
+      // Fetch user rankings
       const { data: rankingsData, error: rankingsError } = await supabase
         .from('user_rankings')
         .select('*')
         .order('ranking_points', { ascending: false })
-        .limit(100) // Increased limit to show more users
+        .limit(100)
 
       if (rankingsError) throw rankingsError
 
@@ -81,22 +84,42 @@ export function UserRankings() {
   }
 
   const getSortedRankings = () => {
+    const filtered = rankings.filter(r => {
+      // Show only users with some activity
+      return r.total_drafts > 0 || r.total_matches > 0 || r.ranking_points > 0
+    })
+
     switch (activeTab) {
       case 'goals':
-        return [...rankings].sort((a, b) => b.total_goals - a.total_goals)
+        return [...filtered].sort((a, b) => {
+          if (b.total_goals !== a.total_goals) return b.total_goals - a.total_goals
+          return b.goals_per_match - a.goals_per_match
+        })
       case 'assists':
-        return [...rankings].sort((a, b) => b.total_assists - a.total_assists)
+        return [...filtered].sort((a, b) => {
+          if (b.total_assists !== a.total_assists) return b.total_assists - a.total_assists
+          return b.assists_per_match - a.assists_per_match
+        })
       case 'wins':
-        return [...rankings].sort((a, b) => b.total_wins - a.total_wins)
+        return [...filtered].sort((a, b) => {
+          if (b.total_wins !== a.total_wins) return b.total_wins - a.total_wins
+          return b.win_rate - a.win_rate
+        })
       case 'clean_sheets':
-        return [...rankings].sort((a, b) => b.total_clean_sheets - a.total_clean_sheets)
+        return [...filtered].sort((a, b) => b.total_clean_sheets - a.total_clean_sheets)
       case 'awards':
-        return [...rankings].sort((a, b) => 
-          (b.mvp_awards + b.top_scorer_awards + b.top_assists_awards + b.best_goalkeeper_awards) - 
-          (a.mvp_awards + a.top_scorer_awards + a.top_assists_awards + a.best_goalkeeper_awards)
-        )
+        return [...filtered].sort((a, b) => {
+          const aTotal = a.mvp_awards + a.top_scorer_awards + a.top_assists_awards + a.best_goalkeeper_awards
+          const bTotal = b.mvp_awards + b.top_scorer_awards + b.top_assists_awards + b.best_goalkeeper_awards
+          return bTotal - aTotal
+        })
+      case 'captains':
+        return [...filtered].sort((a, b) => {
+          if (b.captain_count !== a.captain_count) return b.captain_count - a.captain_count
+          return b.drafts_won - a.drafts_won
+        })
       default:
-        return rankings
+        return filtered
     }
   }
 
@@ -153,6 +176,8 @@ export function UserRankings() {
         return user.total_clean_sheets
       case 'awards':
         return user.mvp_awards + user.top_scorer_awards + user.top_assists_awards + user.best_goalkeeper_awards
+      case 'captains':
+        return user.captain_count
       default:
         return user.ranking_points
     }
@@ -167,11 +192,30 @@ export function UserRankings() {
       case 'wins':
         return 'Vittorie Totali'
       case 'clean_sheets':
-        return 'Clean Sheets Totali'
+        return 'Clean Sheets'
       case 'awards':
         return 'Premi Totali'
+      case 'captains':
+        return 'Volte Capitano'
       default:
         return 'Punti Ranking'
+    }
+  }
+
+  const getSecondaryStats = (user: UserRanking) => {
+    switch (activeTab) {
+      case 'goals':
+        return `${user.goals_per_match.toFixed(2)} goal/partita`
+      case 'assists':
+        return `${user.assists_per_match.toFixed(2)} assist/partita`
+      case 'wins':
+        return `${user.win_rate.toFixed(1)}% win rate`
+      case 'clean_sheets':
+        return user.total_matches > 0 ? `${((user.total_clean_sheets / user.total_matches) * 100).toFixed(1)}% delle partite` : '0%'
+      case 'captains':
+        return `${user.drafts_won} tornei vinti`
+      default:
+        return `${user.win_rate.toFixed(1)}% WR • ${user.goals_per_match.toFixed(1)} G/M • ${user.assists_per_match.toFixed(1)} A/M`
     }
   }
 
@@ -211,10 +255,13 @@ export function UserRankings() {
                   <span className="font-medium text-white text-sm">{getAwardLabel(award.award_type)}</span>
                 </div>
                 <p className="font-bold text-white">{award.username}</p>
-                <p className="text-sm text-gray-400">{award.event?.title}</p>
+                <p className="text-sm text-gray-400 truncate">{award.event?.title}</p>
                 {award.description && (
-                  <p className="text-xs text-gray-500 mt-1">{award.description}</p>
+                  <p className="text-xs text-gray-500 mt-1 truncate">{award.description}</p>
                 )}
+                <p className="text-xs text-gray-600 mt-1">
+                  {new Date(award.created_at).toLocaleDateString('it-IT')}
+                </p>
               </div>
             ))}
           </div>
@@ -224,12 +271,13 @@ export function UserRankings() {
       {/* Tab Navigation */}
       <div className="flex space-x-1 bg-gray-800 rounded-lg p-1 overflow-x-auto">
         {[
-          { id: 'overall', label: 'Generale', icon: TrendingUp },
-          { id: 'goals', label: 'Goal', icon: Target },
-          { id: 'assists', label: 'Assist', icon: Users },
-          { id: 'wins', label: 'Vittorie', icon: Trophy },
-          { id: 'clean_sheets', label: 'Clean Sheets', icon: Shield },
-          { id: 'awards', label: 'Premi', icon: Award }
+          { id: 'overall', label: 'Generale', icon: TrendingUp, color: 'text-blue-400' },
+          { id: 'goals', label: 'Goal', icon: Target, color: 'text-red-400' },
+          { id: 'assists', label: 'Assist', icon: Users, color: 'text-blue-400' },
+          { id: 'wins', label: 'Vittorie', icon: Trophy, color: 'text-green-400' },
+          { id: 'clean_sheets', label: 'Clean Sheets', icon: Shield, color: 'text-purple-400' },
+          { id: 'captains', label: 'Capitani', icon: Crown, color: 'text-yellow-400' },
+          { id: 'awards', label: 'Premi', icon: Award, color: 'text-orange-400' }
         ].map((tab) => {
           const Icon = tab.icon
           return (
@@ -242,7 +290,7 @@ export function UserRankings() {
                   : 'text-gray-400 hover:text-white'
               }`}
             >
-              <Icon className="h-4 w-4" />
+              <Icon className={`h-4 w-4 ${activeTab === tab.id ? 'text-white' : tab.color}`} />
               <span>{tab.label}</span>
             </button>
           )
@@ -267,6 +315,7 @@ export function UserRankings() {
               {sortedRankings.map((user, index) => {
                 const position = index + 1
                 const statValue = getStatValue(user)
+                const totalAwards = user.mvp_awards + user.top_scorer_awards + user.top_assists_awards + user.best_goalkeeper_awards
                 
                 return (
                   <div 
@@ -282,30 +331,95 @@ export function UserRankings() {
                         {getRankIcon(position)}
                       </div>
                       
-                      <div>
-                        <h4 className="font-bold text-white">{user.username}</h4>
-                        <div className="flex items-center space-x-4 text-sm text-gray-400">
-                          <span>{user.total_drafts} draft</span>
-                          <span>{user.total_matches} partite</span>
+                      <div className="flex-1">
+                        <div className="flex items-center space-x-3 mb-1">
+                          <h4 className="font-bold text-white text-lg">{user.username}</h4>
+                          
+                          {/* Special Badges */}
+                          {user.drafts_won > 0 && (
+                            <span className="inline-flex items-center px-2 py-1 bg-purple-600 text-white text-xs font-bold rounded-full">
+                              <Trophy className="h-3 w-3 mr-1" />
+                              {user.drafts_won}x Vincitore
+                            </span>
+                          )}
+                          
                           {user.captain_count > 0 && (
-                            <span className="flex items-center space-x-1">
-                              <Crown className="h-3 w-3 text-yellow-400" />
-                              <span>{user.captain_count}x capitano</span>
+                            <span className="inline-flex items-center px-2 py-1 bg-yellow-600 text-white text-xs font-bold rounded-full">
+                              <Crown className="h-3 w-3 mr-1" />
+                              {user.captain_count}x Capitano
+                            </span>
+                          )}
+                          
+                          {totalAwards > 0 && (
+                            <span className="inline-flex items-center px-2 py-1 bg-orange-600 text-white text-xs font-bold rounded-full">
+                              <Award className="h-3 w-3 mr-1" />
+                              {totalAwards} Premi
                             </span>
                           )}
                         </div>
+                        
+                        {/* Detailed Stats */}
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm text-gray-400">
+                          <div className="flex items-center space-x-1">
+                            <Gamepad2 className="h-3 w-3 text-blue-400" />
+                            <span>{user.total_drafts} draft</span>
+                          </div>
+                          <div className="flex items-center space-x-1">
+                            <Users className="h-3 w-3 text-green-400" />
+                            <span>{user.total_wins} match vinti</span>
+                          </div>
+                          <div className="flex items-center space-x-1">
+                            <Target className="h-3 w-3 text-red-400" />
+                            <span>{user.total_goals}G + {user.total_assists}A</span>
+                          </div>
+                          <div className="flex items-center space-x-1">
+                            <Shield className="h-3 w-3 text-purple-400" />
+                            <span>{user.total_clean_sheets} CS</span>
+                          </div>
+                        </div>
+                        
+                        {/* Secondary Stats */}
+                        <p className="text-xs text-gray-500 mt-1">
+                          {getSecondaryStats(user)}
+                        </p>
                       </div>
                     </div>
                     
                     <div className="text-right">
-                      <p className="text-2xl font-bold text-white">{statValue}</p>
+                      <p className="text-3xl font-bold text-white">{statValue}</p>
                       <p className="text-sm text-gray-400">{getStatLabel()}</p>
                       
+                      {/* Awards Breakdown for Awards Tab */}
+                      {activeTab === 'awards' && totalAwards > 0 && (
+                        <div className="flex items-center space-x-1 mt-2 text-xs">
+                          {user.mvp_awards > 0 && (
+                            <span className="bg-yellow-600 text-white px-2 py-1 rounded-full">
+                              MVP: {user.mvp_awards}
+                            </span>
+                          )}
+                          {user.top_scorer_awards > 0 && (
+                            <span className="bg-red-600 text-white px-2 py-1 rounded-full">
+                              Goal: {user.top_scorer_awards}
+                            </span>
+                          )}
+                          {user.top_assists_awards > 0 && (
+                            <span className="bg-blue-600 text-white px-2 py-1 rounded-full">
+                              Assist: {user.top_assists_awards}
+                            </span>
+                          )}
+                          {user.best_goalkeeper_awards > 0 && (
+                            <span className="bg-green-600 text-white px-2 py-1 rounded-full">
+                              GK: {user.best_goalkeeper_awards}
+                            </span>
+                          )}
+                        </div>
+                      )}
+                      
+                      {/* Overall Stats for Overall Tab */}
                       {activeTab === 'overall' && (
-                        <div className="flex items-center space-x-2 mt-1">
-                          <span className="text-xs text-green-400">{user.win_rate}% WR</span>
-                          <span className="text-xs text-red-400">{user.goals_per_match} G/M</span>
-                          <span className="text-xs text-blue-400">{user.assists_per_match} A/M</span>
+                        <div className="text-xs text-gray-500 mt-1 space-y-1">
+                          <div>Rank Points: {user.ranking_points}</div>
+                          <div>Last Updated: {new Date(user.updated_at).toLocaleDateString('it-IT')}</div>
                         </div>
                       )}
                     </div>
@@ -331,6 +445,7 @@ export function UserRankings() {
                 <p className="font-bold text-white">{sortedRankings[1].username}</p>
                 <p className="text-2xl font-bold text-gray-400">{getStatValue(sortedRankings[1])}</p>
                 <p className="text-xs text-gray-500">2° Posto</p>
+                <p className="text-xs text-gray-600 mt-1">{getSecondaryStats(sortedRankings[1])}</p>
               </div>
             </div>
 
@@ -343,6 +458,7 @@ export function UserRankings() {
                 <p className="font-bold text-white">{sortedRankings[0].username}</p>
                 <p className="text-3xl font-bold text-yellow-400">{getStatValue(sortedRankings[0])}</p>
                 <p className="text-xs text-gray-500">1° Posto</p>
+                <p className="text-xs text-gray-600 mt-1">{getSecondaryStats(sortedRankings[0])}</p>
               </div>
             </div>
 
@@ -355,11 +471,36 @@ export function UserRankings() {
                 <p className="font-bold text-white">{sortedRankings[2].username}</p>
                 <p className="text-2xl font-bold text-orange-400">{getStatValue(sortedRankings[2])}</p>
                 <p className="text-xs text-gray-500">3° Posto</p>
+                <p className="text-xs text-gray-600 mt-1">{getSecondaryStats(sortedRankings[2])}</p>
               </div>
             </div>
           </div>
         </div>
       )}
+
+      {/* Ranking Formula Info */}
+      <div className="glass rounded-xl p-6 border border-white/20">
+        <h3 className="text-lg font-bold text-white mb-4 flex items-center">
+          <Zap className="h-5 w-5 mr-2 text-blue-400" />
+          Formula Ranking Points
+        </h3>
+        <div className="bg-gray-700 rounded-lg p-4 font-mono text-sm text-gray-300">
+          <p className="mb-2"><strong className="text-white">Punti Ranking =</strong></p>
+          <div className="space-y-1 ml-4">
+            <p>• Vittorie × 3</p>
+            <p>• Goal × 2</p>
+            <p>• Assist × 1</p>
+            <p>• Clean Sheets × 2</p>
+            <p>• Draft Partecipati × 5</p>
+            <p>• MVP Awards × 50</p>
+            <p>• Top Scorer Awards × 30</p>
+            <p>• Top Assists Awards × 25</p>
+            <p>• Best GK Awards × 35</p>
+            <p>• Volte Capitano × 10</p>
+            <p>• Tornei Vinti × 100</p>
+          </div>
+        </div>
+      </div>
     </div>
   )
 }

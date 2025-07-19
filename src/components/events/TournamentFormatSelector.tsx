@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
 import { supabase } from '../../lib/supabase'
+import { useAuth } from '../../contexts/AuthContext'
 import { Trophy, Users, Zap, Target, Crown, Shield, Settings } from 'lucide-react'
 import toast from 'react-hot-toast'
 
@@ -10,15 +11,40 @@ interface TournamentFormatSelectorProps {
 }
 
 export function TournamentFormatSelector({ eventId, teamCount, onFormatSelected }: TournamentFormatSelectorProps) {
+  const { profile, isAdminViewActive } = useAuth()
   const [selectedFormat, setSelectedFormat] = useState<'elimination' | 'groups' | null>(null)
   const [groupsCount, setGroupsCount] = useState(Math.ceil(teamCount / 4))
+  const [teamsToAdvancePerGroup, setTeamsToAdvancePerGroup] = useState(2)
   const [loading, setLoading] = useState(false)
 
+  // Check if user is admin
+  const isAdmin = profile?.is_admin && isAdminViewActive
+
+  if (!isAdmin) {
+    return (
+      <div className="text-center py-12">
+        <div className="glass rounded-xl p-8 border border-red-400/30">
+          <Shield className="h-16 w-16 text-red-400 mx-auto mb-4" />
+          <h3 className="text-xl font-bold text-white mb-2">Accesso Limitato</h3>
+          <p className="text-red-300">
+            Solo gli amministratori possono configurare il formato del torneo.
+          </p>
+        </div>
+      </div>
+    )
+  }
   const handleFormatSelection = async (format: 'elimination' | 'groups') => {
     setLoading(true)
     try {
+      console.log('🏆 Creating tournament bracket with format:', format)
+      
       // Create tournament bracket
-      const settings = format === 'groups' ? { groupsCount } : {}
+      const settings = format === 'groups' ? { 
+        groupsCount, 
+        teamsToAdvancePerGroup 
+      } : {}
+      
+      console.log('⚙️ Tournament settings:', settings)
       
       const { data: bracketData, error: bracketError } = await supabase
         .from('tournament_brackets')
@@ -26,12 +52,15 @@ export function TournamentFormatSelector({ eventId, teamCount, onFormatSelected 
           event_id: eventId,
           format,
           settings,
-          status: 'pending'
+          status: 'pending',
+          stage: 'group_stage'
         })
         .select()
         .single()
 
       if (bracketError) throw bracketError
+      
+      console.log('✅ Tournament bracket created:', bracketData)
 
       // Update event with tournament format
       const { error: eventError } = await supabase
@@ -40,6 +69,8 @@ export function TournamentFormatSelector({ eventId, teamCount, onFormatSelected 
         .eq('id', eventId)
 
       if (eventError) throw eventError
+      
+      console.log('✅ Event updated with tournament format')
 
       setSelectedFormat(format)
       onFormatSelected(bracketData)
@@ -65,6 +96,10 @@ export function TournamentFormatSelector({ eventId, teamCount, onFormatSelected 
 
   const getTeamsPerGroup = () => {
     return Math.ceil(teamCount / groupsCount)
+  }
+
+  const getMaxTeamsToAdvance = () => {
+    return Math.max(1, getTeamsPerGroup() - 1) // Almeno 1 squadra deve rimanere nel girone
   }
 
   return (
@@ -187,22 +222,42 @@ export function TournamentFormatSelector({ eventId, teamCount, onFormatSelected 
                 </p>
               </div>
               
-              <div className="grid grid-cols-2 gap-3">
-                <div className="glass rounded-lg p-3 border border-green-400/30">
-                  <div className="flex items-center justify-center space-x-2 mb-1">
-                    <Trophy className="h-4 w-4 text-green-400" />
-                    <span className="text-sm font-medium text-white">Partite</span>
-                  </div>
-                  <p className="text-xl font-bold text-green-400">Più</p>
+              {/* Teams to Advance Selector */}
+              <div className="glass rounded-xl p-4 border border-green-400/30">
+                <div className="flex items-center justify-center space-x-3 mb-3">
+                  <Trophy className="h-5 w-5 text-green-400" />
+                  <span className="font-bold text-white">Squadre Qualificate</span>
                 </div>
-                
-                <div className="glass rounded-lg p-3 border border-purple-400/30">
-                  <div className="flex items-center justify-center space-x-2 mb-1">
-                    <Shield className="h-4 w-4 text-purple-400" />
-                    <span className="text-sm font-medium text-white">Equilibrio</span>
-                  </div>
-                  <p className="text-xl font-bold text-purple-400">Alto</p>
+                <div className="flex items-center justify-center space-x-3">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      if (teamsToAdvancePerGroup > 1) {
+                        setTeamsToAdvancePerGroup(teamsToAdvancePerGroup - 1)
+                      }
+                    }}
+                    className="w-8 h-8 bg-green-500 hover:bg-green-600 text-white rounded-full font-bold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    disabled={teamsToAdvancePerGroup <= 1}
+                  >
+                    -
+                  </button>
+                  <span className="text-3xl font-bold text-green-400 w-12 text-center">{teamsToAdvancePerGroup}</span>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      if (teamsToAdvancePerGroup < getMaxTeamsToAdvance()) {
+                        setTeamsToAdvancePerGroup(teamsToAdvancePerGroup + 1)
+                      }
+                    }}
+                    className="w-8 h-8 bg-green-500 hover:bg-green-600 text-white rounded-full font-bold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    disabled={teamsToAdvancePerGroup >= getMaxTeamsToAdvance()}
+                  >
+                    +
+                  </button>
                 </div>
+                <p className="text-xs text-white/60 mt-2">
+                  per girone alle finali
+                </p>
               </div>
             </div>
           </div>
@@ -217,61 +272,7 @@ export function TournamentFormatSelector({ eventId, teamCount, onFormatSelected 
         </div>
       )}
 
-      {/* Format Comparison */}
-      <div className="glass rounded-2xl p-8 border border-white/20">
-        <h4 className="text-xl font-bold text-white mb-6 text-center">Confronto Formati</h4>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="space-y-3">
-            <h5 className="font-bold text-red-400 flex items-center">
-              <Zap className="h-5 w-5 mr-2" />
-              Eliminazione Diretta
-            </h5>
-            <ul className="space-y-2 text-white/70">
-              <li className="flex items-center">
-                <span className="w-2 h-2 bg-green-400 rounded-full mr-3"></span>
-                Veloce e intenso
-              </li>
-              <li className="flex items-center">
-                <span className="w-2 h-2 bg-green-400 rounded-full mr-3"></span>
-                Meno partite totali
-              </li>
-              <li className="flex items-center">
-                <span className="w-2 h-2 bg-red-400 rounded-full mr-3"></span>
-                Una sconfitta = eliminazione
-              </li>
-              <li className="flex items-center">
-                <span className="w-2 h-2 bg-red-400 rounded-full mr-3"></span>
-                Meno opportunità di recupero
-              </li>
-            </ul>
-          </div>
-          
-          <div className="space-y-3">
-            <h5 className="font-bold text-blue-400 flex items-center">
-              <Users className="h-5 w-5 mr-2" />
-              Fase a Gironi
-            </h5>
-            <ul className="space-y-2 text-white/70">
-              <li className="flex items-center">
-                <span className="w-2 h-2 bg-green-400 rounded-full mr-3"></span>
-                Più partite per squadra
-              </li>
-              <li className="flex items-center">
-                <span className="w-2 h-2 bg-green-400 rounded-full mr-3"></span>
-                Più equilibrato
-              </li>
-              <li className="flex items-center">
-                <span className="w-2 h-2 bg-green-400 rounded-full mr-3"></span>
-                Possibilità di recupero
-              </li>
-              <li className="flex items-center">
-                <span className="w-2 h-2 bg-red-400 rounded-full mr-3"></span>
-                Durata maggiore
-              </li>
-            </ul>
-          </div>
-        </div>
-      </div>
+
     </div>
   )
 }
